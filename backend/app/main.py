@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends
 from sqlalchemy.orm import Session
 from .database import engine, Base, get_db
-from .routers import activities
+from .routers import activities, alignment
 from .services import activity_service
 
 Base.metadata.create_all(bind=engine)
@@ -13,6 +13,7 @@ app = FastAPI(
 )
 
 app.include_router(activities.router)
+app.include_router(alignment.router)
 
 @app.get("/stats", tags=["stats"])
 def get_stats(db: Session = Depends(get_db)):
