@@ -34,6 +34,7 @@ class APIKey(Base):
 
     id = Column(String, primary_key=True, index=True)
     company_id = Column(String, ForeignKey("companies.id"))
+    agent_id = Column(String, ForeignKey("agents.id"), nullable=True)
     key_hash = Column(String, unique=True, index=True)
     name = Column(String)
     is_active = Column(Boolean, default=True)

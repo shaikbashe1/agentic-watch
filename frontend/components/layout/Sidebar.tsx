@@ -46,8 +46,8 @@ export function Sidebar() {
           <Target className="w-4 h-4" /> Analytics
         </Link>
         <div className="pt-6 pb-2 text-xs text-gray-500 font-semibold uppercase">Settings</div>
-        <Link href="/agents/register" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded font-medium text-gray-700">
-          <Target className="w-4 h-4" /> Register Agent
+        <Link href="/agents/wizard" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded font-medium text-gray-700">
+          <Target className="w-4 h-4" /> Connect Agent
         </Link>
         <Link href="/settings/api-keys" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded font-medium text-gray-700">
           <Target className="w-4 h-4" /> API Keys

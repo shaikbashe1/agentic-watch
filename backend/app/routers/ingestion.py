@@ -3,16 +3,53 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any
 from ..database import get_db
 from ..services.auth_service import get_company_from_api_key
-from ..models import execution, tool_trace, metrics, workflow
+from ..models import execution, tool_trace, metrics, workflow, agent, tenant
 from ..schemas import observability as obs_schemas
 from ..services.ws_service import manager
 
 router = APIRouter()
 
+@router.post("/agents/register", tags=["ingestion"])
+async def register_agent(payload: Dict[str, Any], company_id: str = Depends(get_company_from_api_key), db: Session = Depends(get_db)):
+    import uuid
+    agent_id = f"agent_{uuid.uuid4().hex[:8]}"
+    api_key_str = f"ak_{uuid.uuid4().hex}"
+    
+    # Create Agent
+    db_agent = agent.Agent(
+        id=agent_id,
+        company_id=company_id,
+        name=payload.get("name", "Unnamed Agent"),
+        framework=payload.get("framework", "Custom"),
+        description=payload.get("description", "")
+    )
+    db.add(db_agent)
+    
+    # Create API Key for this agent
+    db_key = tenant.APIKey(
+        id=f"key_{uuid.uuid4().hex[:8]}",
+        company_id=company_id,
+        agent_id=agent_id,
+        key_hash=api_key_str, # in real app, hash this
+        name=f"Key for {db_agent.name}"
+    )
+    db.add(db_key)
+    
+    db.commit()
+    return {"agent_id": agent_id, "api_key": api_key_str}
+
 @router.post("/telemetry", tags=["ingestion"])
 async def ingest_telemetry(payload: Dict[str, Any], company_id: str = Depends(get_company_from_api_key), db: Session = Depends(get_db)):
     event_type = payload.get("event_type")
+    agent_id = payload.get("agent_id")
     
+    # Update agent health status
+    if agent_id:
+        db_agent = db.query(agent.Agent).filter(agent.Agent.id == agent_id).first()
+        if db_agent and db_agent.status != "Connected":
+            db_agent.status = "Connected"
+            db.commit()
+
     if event_type == "timeline_step":
         event = obs_schemas.TimelineEventCreate(**payload)
         db_event = execution.TimelineEvent(**event.dict(), company_id=company_id)

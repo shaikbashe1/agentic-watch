@@ -10,4 +10,5 @@ class Agent(Base):
     name = Column(String)
     framework = Column(String) # LangGraph, CrewAI, AutoGen, Custom
     description = Column(String, nullable=True)
+    status = Column(String, default="Disconnected") # Connected, Disconnected, Error
     created_at = Column(DateTime, default=datetime.utcnow)
