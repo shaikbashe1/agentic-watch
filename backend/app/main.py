@@ -5,6 +5,10 @@ from sqlalchemy.orm import Session
 from .database import engine, Base, get_db
 from .routers import activities, alignment, alerts, policies, observability, ingestion, auth, team, keys
 from .services import activity_service
+from .websockets import manager
+from jose import jwt, JWTError
+from .services.auth_service import SECRET_KEY, ALGORITHM
+from fastapi import WebSocket, WebSocketDisconnect
 
 logging.basicConfig(level=logging.INFO)
 
@@ -30,6 +34,25 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.websocket("/ws/dashboard")
+async def websocket_endpoint(websocket: WebSocket, token: str):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        company_id = payload.get("company_id")
+        if not company_id:
+            await websocket.close(code=1008)
+            return
+            
+        await manager.connect(websocket, company_id)
+        try:
+            while True:
+                data = await websocket.receive_text()
+                # We don't really expect to receive data from dashboard, just push to it
+        except WebSocketDisconnect:
+            manager.disconnect(websocket, company_id)
+    except JWTError:
+        await websocket.close(code=1008)
 
 app.include_router(auth.router)
 app.include_router(team.router)

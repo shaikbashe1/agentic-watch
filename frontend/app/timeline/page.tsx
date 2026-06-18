@@ -2,15 +2,45 @@
 import React, { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
+interface TimelineEvent {
+    id: string;
+    step_type?: string;
+    description?: string;
+    timestamp: string;
+    status: string;
+    duration_ms?: number;
+}
+
 export default function TimelinePage() {
-    const [events, setEvents] = useState([]);
-    
+    const [events, setEvents] = useState<TimelineEvent[]>([]);
+
     useEffect(() => {
-        // Fetch timeline events or connect to WS
+        // Fetch timeline events
         fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/timeline/default_agent`)
             .then(res => res.json())
             .then(data => setEvents(data))
             .catch(console.error);
+
+        // Setup WebSocket for Real-Time Timeline
+        const token = localStorage.getItem('agentwatch_token');
+        if (token) {
+            const ws = new WebSocket(`ws://localhost:8000/ws/dashboard?token=${token}`);
+            ws.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.event_type === 'timeline_step' || data.event_type === 'tool_call') {
+                        // Prepend new event to timeline dynamically
+                        setEvents(prev => [{
+                            id: `ws_${Date.now()}`,
+                            description: data.event_type === 'tool_call' ? `Tool Call: ${data.payload.tool_name}` : data.payload.step,
+                            timestamp: data.timestamp,
+                            status: data.payload.status || 'success'
+                        }, ...prev]);
+                    }
+                } catch (e) { console.error(e); }
+            };
+            return () => ws.close();
+        }
     }, []);
 
     return (
