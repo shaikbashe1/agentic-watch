@@ -52,6 +52,9 @@ export function Sidebar() {
         <Link href="/settings/api-keys" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded font-medium text-gray-700">
           <Target className="w-4 h-4" /> API Keys
         </Link>
+        <Link href="/settings/team" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded font-medium text-gray-700">
+          <Target className="w-4 h-4" /> Team Management
+        </Link>
         <Link href="/settings/billing" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded font-medium text-gray-700">
           <Target className="w-4 h-4" /> Billing & Plans
         </Link>

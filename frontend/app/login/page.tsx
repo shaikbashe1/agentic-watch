@@ -7,17 +7,41 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    const handleLogin = (e: React.FormEvent) => {
+    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        // In a real app, call API to get JWT
-        localStorage.setItem('agentwatch_token', 'dummy-jwt-token');
-        router.push('/');
+        setIsLoading(true);
+        setError('');
+        
+        try {
+            const res = await fetch('http://localhost:8000/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email, password })
+            });
+            
+            if (!res.ok) {
+                const data = await res.json();
+                throw new Error(data.detail || 'Login failed');
+            }
+            
+            const data = await res.json();
+            localStorage.setItem('agentwatch_token', data.access_token);
+            router.push('/');
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
         <div className="flex h-screen items-center justify-center bg-gray-50">
             <div className="w-full max-w-md p-8 bg-white rounded shadow-md">
                 <h1 className="text-2xl font-bold mb-6 text-center text-blue-600">Agentic Watch Login</h1>
+                {error && <div className="mb-4 p-2 bg-red-100 text-red-700 text-sm rounded">{error}</div>}
                 <form onSubmit={handleLogin} className="space-y-4">
                     <div>
                         <label className="block text-sm font-medium mb-1">Email</label>

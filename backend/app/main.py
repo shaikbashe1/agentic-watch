@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from .database import engine, Base, get_db
-from .routers import activities, alignment, alerts, policies, observability, ingestion
+from .routers import activities, alignment, alerts, policies, observability, ingestion, auth, team
 from .services import activity_service
 
 logging.basicConfig(level=logging.INFO)
@@ -15,6 +15,8 @@ app = FastAPI(
     description="Multi-tenant Agent Observability Platform",
     version="3.0.0",
     openapi_tags=[
+        {"name": "auth", "description": "Authentication and Account Creation"},
+        {"name": "team", "description": "Team & RBAC Management"},
         {"name": "ingestion", "description": "Universal telemetry ingestion"},
         {"name": "observability", "description": "Observability and Execution Timeline"},
     ],
@@ -28,6 +30,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
+app.include_router(team.router)
 app.include_router(ingestion.router)
 app.include_router(observability.router)
 
