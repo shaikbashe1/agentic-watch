@@ -5,8 +5,11 @@ export interface Activity {
   action_description: string;
   target_resource: string;
   status: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   timestamp: string;
+  risk_score?: number | null;
+  alignment_score?: number | null;
+  policy_decision?: string | null;
 }
 
 export interface Stats {
@@ -17,17 +20,42 @@ export interface Stats {
   failed: number;
 }
 
+export interface AgentStat {
+  agent_name: string;
+  total: number;
+}
+
+export type AlertSeverity = "low" | "medium" | "high" | "critical";
+export type AlertStatus = "open" | "acknowledged" | "resolved";
+
 export interface Alert {
   id: number;
-  severity: "Low" | "Medium" | "High" | "Critical";
-  message: string;
-  timestamp: string;
+  title: string;
+  description?: string | null;
+  severity: AlertSeverity;
+  source: string;
+  activity_id?: number | null;
+  status: AlertStatus;
+  created_at: string;
 }
 
 export interface Policy {
   id: number;
   name: string;
-  enabled: boolean;
+  description?: string | null;
+  action_type: string;
+  decision: "allow" | "warn" | "block";
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PolicyCreate {
+  name: string;
+  description?: string;
+  action_type: string;
+  decision: "allow" | "warn" | "block";
+  is_active?: boolean;
 }
 
 export interface AlignmentResponse {

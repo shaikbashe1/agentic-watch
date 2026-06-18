@@ -11,7 +11,6 @@ logger = logging.getLogger(__name__)
 _DECISION_SEVERITY = {
     "block": "critical",
     "warn": "medium",
-    "allow": "low",
 }
 
 
@@ -27,7 +26,7 @@ def create_alert(db: Session, alert: AlertCreate) -> Alert:
     db.add(db_alert)
     db.commit()
     db.refresh(db_alert)
-    logger.info(f"Created alert id={db_alert.id} severity={db_alert.severity}")
+    logger.info(f"Created alert id={db_alert.id} severity={db_alert.severity} title={db_alert.title}")
     notification_service.notify_alert(
         alert_title=db_alert.title,
         alert_description=db_alert.description,
@@ -38,7 +37,7 @@ def create_alert(db: Session, alert: AlertCreate) -> Alert:
 
 
 def get_alerts(db: Session, skip: int = 0, limit: int = 100) -> list[Alert]:
-    return db.query(Alert).offset(skip).limit(limit).all()
+    return db.query(Alert).order_by(Alert.created_at.desc()).offset(skip).limit(limit).all()
 
 
 def get_alert(db: Session, alert_id: int) -> Alert:
@@ -76,10 +75,8 @@ def generate_alert_for_policy_decision(
     matched_policy: Optional[str],
     activity_id: Optional[int],
 ) -> Optional[Alert]:
-    """Generate an alert when policy evaluation yields warn or block."""
     if decision == "allow":
         return None
-
     severity = _DECISION_SEVERITY.get(decision, "medium")
     title = f"Policy {decision.upper()}: {action_type}"
     description = (
@@ -87,15 +84,11 @@ def generate_alert_for_policy_decision(
         + (f" by policy '{matched_policy}'" if matched_policy else "")
         + "."
     )
-    alert_data = AlertCreate(
-        title=title,
-        description=description,
-        severity=severity,
-        source="policy_engine",
-        activity_id=activity_id,
-        status="open",
-    )
-    return create_alert(db, alert_data)
+    return create_alert(db, AlertCreate(
+        title=title, description=description,
+        severity=severity, source="policy_engine",
+        activity_id=activity_id, status="open",
+    ))
 
 
 def generate_alert_for_high_risk(
@@ -104,16 +97,14 @@ def generate_alert_for_high_risk(
     risk_score: float,
     activity_id: Optional[int],
 ) -> Alert:
-    severity = "critical" if risk_score >= 0.9 else "high"
-    alert_data = AlertCreate(
+    pct = int(risk_score * 100)
+    severity = "critical" if pct >= 90 else "high"
+    return create_alert(db, AlertCreate(
         title=f"High Risk Score: {action_type}",
-        description=f"Action '{action_type}' has risk score {risk_score:.2f}.",
-        severity=severity,
-        source="risk_engine",
-        activity_id=activity_id,
-        status="open",
-    )
-    return create_alert(db, alert_data)
+        description=f"Action '{action_type}' has risk score {pct}/100.",
+        severity=severity, source="risk_engine",
+        activity_id=activity_id, status="open",
+    ))
 
 
 def generate_alert_for_goal_alignment_failure(
@@ -121,12 +112,9 @@ def generate_alert_for_goal_alignment_failure(
     action_type: str,
     activity_id: Optional[int],
 ) -> Alert:
-    alert_data = AlertCreate(
+    return create_alert(db, AlertCreate(
         title=f"Goal Alignment Failure: {action_type}",
-        description=f"Action '{action_type}' failed goal alignment check.",
-        severity="high",
-        source="alignment_engine",
-        activity_id=activity_id,
-        status="open",
-    )
-    return create_alert(db, alert_data)
+        description=f"Action '{action_type}' failed goal alignment check (alignment score too low).",
+        severity="high", source="alignment_engine",
+        activity_id=activity_id, status="open",
+    ))

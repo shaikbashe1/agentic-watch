@@ -13,14 +13,17 @@ class ActivityBase(BaseModel):
 
 
 class ActivityCreate(ActivityBase):
-    pass
+    # Optional: provide user_goal to trigger inline alignment + alert generation
+    user_goal: Optional[str] = Field(default=None, exclude=True)
 
 
 class ActivityResponse(ActivityBase):
     id: int
     timestamp: datetime
-    # When reading from ORM, SQLAlchemy puts the column value in `metadata_`.
-    # The class-level `metadata` is the MetaData() object, so we must read `metadata_`.
+    risk_score: Optional[float] = None
+    alignment_score: Optional[float] = None
+    policy_decision: Optional[str] = None
+    # Read metadata_ from the ORM column (named metadata_ in Python)
     metadata_: Optional[Dict[str, Any]] = Field(
         default=None,
         validation_alias="metadata_",

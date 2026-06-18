@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { Activity, Stats, Alert, Policy } from "@/types";
+import { Activity, Stats, AgentStat, Alert, Policy, PolicyCreate } from "@/types";
 
 export function useStats() {
   return useQuery({
@@ -9,26 +9,40 @@ export function useStats() {
       const { data } = await api.get<Stats>("/stats");
       return data;
     },
+    refetchInterval: 10_000,
   });
 }
 
-export function useActivities() {
+export function useActivities(limit = 100) {
   return useQuery({
-    queryKey: ["activities"],
+    queryKey: ["activities", limit],
     queryFn: async () => {
-      const { data } = await api.get<Activity[]>("/activities");
+      const { data } = await api.get<Activity[]>("/activities", { params: { limit } });
       return data;
     },
+    refetchInterval: 10_000,
   });
 }
 
-export function useAlerts() {
+export function useAgentStats() {
   return useQuery({
-    queryKey: ["alerts"],
+    queryKey: ["agent-stats"],
     queryFn: async () => {
-      const { data } = await api.get<Alert[]>("/alerts");
+      const { data } = await api.get<AgentStat[]>("/activities/stats/agents");
       return data;
     },
+    refetchInterval: 10_000,
+  });
+}
+
+export function useAlerts(limit = 100) {
+  return useQuery({
+    queryKey: ["alerts", limit],
+    queryFn: async () => {
+      const { data } = await api.get<Alert[]>("/alerts", { params: { limit } });
+      return data;
+    },
+    refetchInterval: 10_000,
   });
 }
 
@@ -39,5 +53,63 @@ export function usePolicies() {
       const { data } = await api.get<Policy[]>("/policies");
       return data;
     },
+  });
+}
+
+export function useCreatePolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (policy: PolicyCreate) => {
+      const { data } = await api.post<Policy>("/policies", policy);
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["policies"] }),
+  });
+}
+
+export function useUpdatePolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: number; updates: Partial<Policy> }) => {
+      const { data } = await api.put<Policy>(`/policies/${id}`, updates);
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["policies"] }),
+  });
+}
+
+export function useDeletePolicy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/policies/${id}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["policies"] }),
+  });
+}
+
+export function useCreateActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (activity: Omit<Activity, "id" | "timestamp">) => {
+      const { data } = await api.post<Activity>("/activities", activity);
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["activities"] });
+      qc.invalidateQueries({ queryKey: ["stats"] });
+      qc.invalidateQueries({ queryKey: ["alerts"] });
+    },
+  });
+}
+
+export function useUpdateAlertStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: number; status: string }) => {
+      const { data } = await api.put<Alert>(`/alerts/${id}`, { status });
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["alerts"] }),
   });
 }
