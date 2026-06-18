@@ -9,34 +9,7 @@ from ..services.ws_service import manager
 
 router = APIRouter()
 
-@router.post("/agents/register", tags=["ingestion"])
-async def register_agent(payload: Dict[str, Any], company_id: str = Depends(get_company_from_api_key), db: Session = Depends(get_db)):
-    import uuid
-    agent_id = f"agent_{uuid.uuid4().hex[:8]}"
-    api_key_str = f"ak_{uuid.uuid4().hex}"
-    
-    # Create Agent
-    db_agent = agent.Agent(
-        id=agent_id,
-        company_id=company_id,
-        name=payload.get("name", "Unnamed Agent"),
-        framework=payload.get("framework", "Custom"),
-        description=payload.get("description", "")
-    )
-    db.add(db_agent)
-    
-    # Create API Key for this agent
-    db_key = tenant.APIKey(
-        id=f"key_{uuid.uuid4().hex[:8]}",
-        company_id=company_id,
-        agent_id=agent_id,
-        key_hash=api_key_str, # in real app, hash this
-        name=f"Key for {db_agent.name}"
-    )
-    db.add(db_key)
-    
-    db.commit()
-    return {"agent_id": agent_id, "api_key": api_key_str}
+
 
 @router.post("/telemetry", tags=["ingestion"])
 async def ingest_telemetry(payload: Dict[str, Any], company_id: str = Depends(get_company_from_api_key), db: Session = Depends(get_db)):

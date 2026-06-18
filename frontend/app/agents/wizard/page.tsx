@@ -13,10 +13,31 @@ export default function AgentWizardPage() {
 
     const handleRegister = async (e: React.FormEvent) => {
         e.preventDefault();
-        // Mock API call to /agents/register
-        setAgentId('agent_1234abcd');
-        setApiKey('ak_5678efgh...');
-        setStep(2);
+        const token = localStorage.getItem('agentwatch_token');
+        if (!token) {
+            router.push('/login');
+            return;
+        }
+
+        try {
+            const res = await fetch('http://localhost:8000/agents/register', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ name: agentName, framework, description: '' })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setAgentId(data.agent_id);
+                setApiKey(data.api_key);
+                setStep(2);
+            }
+        } catch (err) {
+            console.error("Registration failed", err);
+        }
     };
 
     const handleVerify = () => {
