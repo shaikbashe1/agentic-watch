@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from .database import engine, Base, get_db
-from .routers import activities, alignment, alerts, policies
+from .routers import activities, alignment, alerts, policies, observability
 from .services import activity_service
 
 logging.basicConfig(level=logging.INFO)
@@ -19,6 +19,7 @@ app = FastAPI(
         {"name": "policies", "description": "Policy engine — define and evaluate action policies"},
         {"name": "alerts", "description": "Alert engine — manage and query alerts"},
         {"name": "stats", "description": "Aggregate statistics"},
+        {"name": "observability", "description": "Observability and Execution Timeline"},
     ],
 )
 
@@ -34,6 +35,7 @@ app.include_router(activities.router)
 app.include_router(alignment.router)
 app.include_router(alerts.router)
 app.include_router(policies.router)
+app.include_router(observability.router)
 
 
 @app.get("/stats", tags=["stats"])

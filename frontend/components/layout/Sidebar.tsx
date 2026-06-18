@@ -26,6 +26,18 @@ export function Sidebar() {
         <Link href="/agents" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded font-medium">
           <Users className="w-4 h-4" /> Agents
         </Link>
+        <Link href="/timeline" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded font-medium text-purple-600">
+          <List className="w-4 h-4" /> Timeline
+        </Link>
+        <Link href="/workflows" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded font-medium text-purple-600">
+          <LayoutDashboard className="w-4 h-4" /> Workflows
+        </Link>
+        <Link href="/costs" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded font-medium text-purple-600">
+          <Target className="w-4 h-4" /> Token & Costs
+        </Link>
+        <Link href="/analytics" className="flex items-center gap-2 p-2 hover:bg-gray-100 rounded font-medium text-purple-600">
+          <Target className="w-4 h-4" /> Analytics
+        </Link>
       </nav>
     </div>
   );
