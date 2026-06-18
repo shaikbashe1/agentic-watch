@@ -3,7 +3,7 @@ from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from .database import engine, Base, get_db
-from .routers import activities, alignment, alerts, policies, observability
+from .routers import activities, alignment, alerts, policies, observability, ingestion
 from .services import activity_service
 
 logging.basicConfig(level=logging.INFO)
@@ -11,14 +11,11 @@ logging.basicConfig(level=logging.INFO)
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="Agentic Watch API",
-    description="AI oversight and governance platform API for monitoring agent actions.",
-    version="2.0.0",
+    title="Agentic Watch B2B API",
+    description="Multi-tenant Agent Observability Platform",
+    version="3.0.0",
     openapi_tags=[
-        {"name": "activities", "description": "Activity capture and management"},
-        {"name": "policies", "description": "Policy engine — define and evaluate action policies"},
-        {"name": "alerts", "description": "Alert engine — manage and query alerts"},
-        {"name": "stats", "description": "Aggregate statistics"},
+        {"name": "ingestion", "description": "Universal telemetry ingestion"},
         {"name": "observability", "description": "Observability and Execution Timeline"},
     ],
 )
@@ -31,10 +28,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(activities.router)
-app.include_router(alignment.router)
-app.include_router(alerts.router)
-app.include_router(policies.router)
+app.include_router(ingestion.router)
 app.include_router(observability.router)
 
 

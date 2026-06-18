@@ -6,6 +6,7 @@ class ToolTrace(Base):
     __tablename__ = "tool_traces"
 
     id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(String, index=True)
     agent_id = Column(String, index=True)
     tool_name = Column(String, index=True)
     input_data = Column(String)

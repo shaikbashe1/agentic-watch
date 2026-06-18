@@ -4,6 +4,8 @@ import requests
 import functools
 
 API_URL = os.environ.get("AGENTWATCH_API_URL", "http://localhost:8000")
+API_KEY = os.environ.get("AGENTWATCH_API_KEY", "")
+HEADERS = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
 def monitor(agent):
     """
@@ -16,7 +18,8 @@ def monitor(agent):
 
         def run(self, *args, **kwargs):
             start_time = time.time()
-            requests.post(f"{API_URL}/timeline", json={
+            requests.post(f"{API_URL}/telemetry", headers=HEADERS, json={
+                "event_type": "timeline_step",
                 "agent_id": self.agent_id,
                 "step_type": "Planning",
                 "status": "Started",
@@ -26,7 +29,8 @@ def monitor(agent):
             try:
                 result = self._original_agent.run(*args, **kwargs)
                 duration = (time.time() - start_time) * 1000
-                requests.post(f"{API_URL}/timeline", json={
+                requests.post(f"{API_URL}/telemetry", headers=HEADERS, json={
+                    "event_type": "timeline_step",
                     "agent_id": self.agent_id,
                     "step_type": "Final Output",
                     "status": "Success",
@@ -35,7 +39,8 @@ def monitor(agent):
                 return result
             except Exception as e:
                 duration = (time.time() - start_time) * 1000
-                requests.post(f"{API_URL}/timeline", json={
+                requests.post(f"{API_URL}/telemetry", headers=HEADERS, json={
+                    "event_type": "timeline_step",
                     "agent_id": self.agent_id,
                     "step_type": "Final Output",
                     "status": "Failed",
@@ -58,7 +63,8 @@ def tool_trace(tool_name):
             try:
                 result = func(*args, **kwargs)
                 duration = (time.time() - start_time) * 1000
-                requests.post(f"{API_URL}/tool-traces", json={
+                requests.post(f"{API_URL}/telemetry", headers=HEADERS, json={
+                    "event_type": "tool_call",
                     "agent_id": agent_id,
                     "tool_name": tool_name,
                     "input_data": input_data,
@@ -69,7 +75,8 @@ def tool_trace(tool_name):
                 return result
             except Exception as e:
                 duration = (time.time() - start_time) * 1000
-                requests.post(f"{API_URL}/tool-traces", json={
+                requests.post(f"{API_URL}/telemetry", headers=HEADERS, json={
+                    "event_type": "tool_call",
                     "agent_id": agent_id,
                     "tool_name": tool_name,
                     "input_data": input_data,

@@ -1,5 +1,6 @@
 export const monitor = (agent: any) => {
     const API_URL = process.env.AGENTWATCH_API_URL || 'http://localhost:8000';
+    const API_KEY = process.env.AGENTWATCH_API_KEY || '';
     
     return new Proxy(agent, {
         get(target, prop, receiver) {
@@ -10,10 +11,11 @@ export const monitor = (agent: any) => {
                     const agentId = target.id || 'default_agent';
                     const startTime = Date.now();
                     
-                    fetch(`${API_URL}/timeline`, {
+                    fetch(`${API_URL}/telemetry`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
                         body: JSON.stringify({
+                            event_type: 'timeline_step',
                             agent_id: agentId,
                             step_type: 'Planning',
                             status: 'Started',
@@ -25,10 +27,11 @@ export const monitor = (agent: any) => {
                         const result = await originalValue.apply(this, args);
                         const duration = Date.now() - startTime;
                         
-                        fetch(`${API_URL}/timeline`, {
+                        fetch(`${API_URL}/telemetry`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
                             body: JSON.stringify({
+                                event_type: 'timeline_step',
                                 agent_id: agentId,
                                 step_type: 'Final Output',
                                 status: 'Success',
@@ -40,10 +43,11 @@ export const monitor = (agent: any) => {
                     } catch (error) {
                         const duration = Date.now() - startTime;
                         
-                        fetch(`${API_URL}/timeline`, {
+                        fetch(`${API_URL}/telemetry`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 'Content-Type': 'application/json', 'X-API-Key': API_KEY },
                             body: JSON.stringify({
+                                event_type: 'timeline_step',
                                 agent_id: agentId,
                                 step_type: 'Final Output',
                                 status: 'Failed',

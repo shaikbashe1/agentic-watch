@@ -7,7 +7,8 @@ class Policy(Base):
     __tablename__ = "policies"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True, nullable=False)
+    company_id = Column(String, index=True)
+    name = Column(String, index=True, nullable=False)
     description = Column(String, nullable=True)
     action_type = Column(String, index=True, nullable=False)
     decision = Column(String, nullable=False)  # allow, warn, block

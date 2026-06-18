@@ -5,5 +5,7 @@ from .execution import TimelineEvent
 from .tool_trace import ToolTrace
 from .metrics import TokenUsage
 from .workflow import WorkflowExecution, VerificationResult
+from .tenant import Company, User, Project, APIKey
+from .agent import Agent
 
 __all__ = ["Activity", "Policy", "Alert"]

@@ -7,6 +7,7 @@ class Alert(Base):
     __tablename__ = "alerts"
 
     id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(String, index=True)
     title = Column(String, nullable=False)
     description = Column(String, nullable=True)
     severity = Column(String, nullable=False)  # low, medium, high, critical

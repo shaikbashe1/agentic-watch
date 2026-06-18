@@ -7,6 +7,7 @@ class Activity(Base):
     __tablename__ = "activities"
 
     id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(String, index=True)
     agent_name = Column(String, index=True)
     action_type = Column(String, index=True)
     action_description = Column(String)

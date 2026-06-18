@@ -6,6 +6,7 @@ class TokenUsage(Base):
     __tablename__ = "token_usage"
 
     id = Column(Integer, primary_key=True, index=True)
+    company_id = Column(String, index=True)
     agent_id = Column(String, index=True)
     prompt_tokens = Column(Integer)
     completion_tokens = Column(Integer)
