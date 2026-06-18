@@ -4,3 +4,8 @@ sqlalchemy==2.0.25
 pydantic==2.6.0
 pydantic-settings==2.1.0
 httpx==0.26.0
+python-jose==3.5.0
+passlib==1.7.4
+bcrypt==5.0.0
+websockets==16.0
+python-multipart==0.0.32
