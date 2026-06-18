@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any
 from ..database import get_db
 from ..services.auth_service import get_company_from_api_key
-from ..models import execution, tool_trace, metrics, workflow, agent, tenant, alerts
+from ..models import execution, tool_trace, metrics, workflow, agent, tenant, alert
 from ..schemas import observability as obs_schemas
 import logging
 from ..websockets import manager
@@ -59,9 +59,9 @@ async def ingest_telemetry(payload: Dict[str, Any], company_id: str = Depends(ge
         
         if len(last_tools) == 5:
             # Check if all 5 are the exact same tool and exact same inputs
-            if all(t.tool_name == trace.tool_name and t.inputs == trace.inputs for t in last_tools):
+            if all(t.tool_name == trace.tool_name and t.input_data == trace.input_data for t in last_tools):
                 # Trigger Loop Alert
-                db_alert = alerts.Alert(
+                db_alert = alert.Alert(
                     id=f"alert_{uuid.uuid4().hex[:8]}",
                     company_id=company_id,
                     agent_id=agent_id,
