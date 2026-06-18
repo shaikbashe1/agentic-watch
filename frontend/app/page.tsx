@@ -132,48 +132,16 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              {(() => {
-                const [metrics, setMetrics] = useState({ total_actions: 0, safe_actions: 0, warnings: 0, blocked_actions: 0, critical_alerts: 0 });
-
-                useEffect(() => {
-                    // Fetch initial stats
-                    fetch('http://localhost:8000/stats')
-                        .then(res => res.json())
-                        .then(data => setMetrics(data))
-                        .catch(err => console.error(err));
-
-                    // Setup WebSocket for Real-Time Dashboard Updates
-                    const token = localStorage.getItem('agentwatch_token');
-                    if (token) {
-                        const ws = new WebSocket(`ws://localhost:8000/ws/dashboard?token=${token}`);
-                        ws.onmessage = (event) => {
-                            try {
-                                const data = JSON.parse(event.data);
-                                if (data.event_type === 'tool_call') {
-                                    setMetrics(prev => ({ ...prev, total_actions: prev.total_actions + 1, safe_actions: prev.safe_actions + 1 }));
-                                } else if (data.event_type === 'alert') {
-                                    if (data.payload.severity === 'Critical') {
-                                        setMetrics(prev => ({ ...prev, critical_alerts: prev.critical_alerts + 1 }));
-                                    }
-                                }
-                            } catch (e) { console.error(e); }
-                        };
-                        return () => ws.close();
-                    }
-                }, []);
-                return (
-                  <AreaChart data={activityData.length ? activityData : [{ name: "–", success: 0, warning: 0, blocked: 0 }]}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Legend />
-                    <Area type="monotone" dataKey="success" stroke="#22c55e" fill="#bbf7d0" stackId="1" />
-                    <Area type="monotone" dataKey="warning" stroke="#eab308" fill="#fef08a" stackId="1" />
-                    <Area type="monotone" dataKey="blocked" stroke="#ef4444" fill="#fecaca" stackId="1" />
-                  </AreaChart>
-                )
-              })()}
+              <AreaChart data={activityData.length ? activityData : [{ name: "–", success: 0, warning: 0, blocked: 0 }]}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" />
+                <YAxis allowDecimals={false} />
+                <Tooltip />
+                <Legend />
+                <Area type="monotone" dataKey="success" stroke="#22c55e" fill="#bbf7d0" stackId="1" />
+                <Area type="monotone" dataKey="warning" stroke="#eab308" fill="#fef08a" stackId="1" />
+                <Area type="monotone" dataKey="blocked" stroke="#ef4444" fill="#fecaca" stackId="1" />
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
