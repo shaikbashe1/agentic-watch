@@ -23,7 +23,7 @@ export default function PoliciesPage() {
   const deletePolicy = useDeletePolicy();
 
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState("");
 
