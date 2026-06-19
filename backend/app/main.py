@@ -70,9 +70,10 @@ app.include_router(ingestion.router)
 app.include_router(observability.router)
 app.include_router(policies.router)
 
-from .routers import webhooks, analytics
+from .routers import webhooks, analytics, agents
 app.include_router(webhooks.router)
 app.include_router(analytics.router)
+app.include_router(agents.router)
 
 
 @app.get("/stats", tags=["stats"])
