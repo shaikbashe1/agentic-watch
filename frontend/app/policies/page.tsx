@@ -22,11 +22,11 @@ export default function PolicyManager() {
           <h1 className="text-3xl font-bold">Policy Manager</h1>
           <p className="text-muted-foreground">Govern agent actions before they execute.</p>
         </div>
-        <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
-          <Link href="/policies/new">
+        <Link href="/policies/new">
+          <Button className="bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="h-4 w-4 mr-2" /> Create Policy
-          </Link>
-        </Button>
+          </Button>
+        </Link>
       </div>
 
       <Card className="border-neutral-800 bg-black/40">
