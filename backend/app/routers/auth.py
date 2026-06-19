@@ -3,6 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import uuid
+import re
 from typing import Dict, Any
 
 from ..database import get_db
@@ -12,9 +13,13 @@ from ..services.auth_service import verify_password, get_password_hash, create_a
 router = APIRouter()
 
 class RegisterRequest(BaseModel):
-    company_name: str
+    workspace_name: str
     email: str
     password: str
+
+def generate_slug(name: str) -> str:
+    slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+    return slug + "-" + uuid.uuid4().hex[:6]
 
 @router.post("/auth/register", tags=["auth"])
 async def register(request: RegisterRequest, db: Session = Depends(get_db)):
@@ -23,24 +28,23 @@ async def register(request: RegisterRequest, db: Session = Depends(get_db)):
     if user:
         raise HTTPException(status_code=400, detail="Email already registered")
         
-    company_id = f"comp_{uuid.uuid4().hex[:8]}"
-    db_company = tenant.Company(id=company_id, name=request.company_name)
-    db.add(db_company)
+    slug = generate_slug(request.workspace_name)
+    db_workspace = tenant.Workspace(name=request.workspace_name, slug=slug, plan="free")
+    db.add(db_workspace)
+    db.flush() # get ID
     
-    user_id = f"user_{uuid.uuid4().hex[:8]}"
     hashed_pw = get_password_hash(request.password)
     db_user = tenant.User(
-        id=user_id,
-        company_id=company_id,
+        workspace_id=db_workspace.id,
         email=request.email,
         hashed_password=hashed_pw,
-        role="Owner"
+        role="owner"
     )
     db.add(db_user)
     
     db.commit()
     
-    access_token = create_access_token(data={"sub": user_id, "company_id": company_id})
+    access_token = create_access_token(data={"sub": db_user.id, "workspace_id": db_workspace.id})
     return {"access_token": access_token, "token_type": "bearer"}
 
 class LoginRequest(BaseModel):
@@ -57,7 +61,7 @@ async def login(request: LoginRequest, db: Session = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
         
-    access_token = create_access_token(data={"sub": user.id, "company_id": user.company_id})
+    access_token = create_access_token(data={"sub": user.id, "workspace_id": user.workspace_id})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/auth/token", tags=["auth"])
@@ -69,5 +73,5 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token(data={"sub": user.id, "company_id": user.company_id})
+    access_token = create_access_token(data={"sub": user.id, "workspace_id": user.workspace_id})
     return {"access_token": access_token, "token_type": "bearer"}

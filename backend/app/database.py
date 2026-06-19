@@ -3,12 +3,10 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 import os
 
-db_path = "/tmp/agentic_watch.db" if os.environ.get("VERCEL") else "./agentic_watch.db"
-SQLALCHEMY_DATABASE_URL = f"sqlite:///{db_path}"
+# Use DATABASE_URL from environment, or fallback to the local postgres container
+SQLALCHEMY_DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres:password@localhost/agentwatch")
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
-)
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

@@ -12,8 +12,17 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 logging.basicConfig(level=logging.INFO)
 
+from sqlalchemy import text
+
 Base.metadata.create_all(bind=engine)
 
+# Try to create hypertable for TimescaleDB if it's Postgres
+try:
+    with engine.connect() as conn:
+        conn.execute(text("SELECT create_hypertable('events', 'started_at', if_not_exists => TRUE);"))
+        conn.commit()
+except Exception as e:
+    logging.info(f"Could not create hypertable (normal if using SQLite or already created): {e}")
 app = FastAPI(
     title="Agentic Watch B2B API",
     description="Multi-tenant Agent Observability Platform",
@@ -59,6 +68,10 @@ app.include_router(team.router)
 app.include_router(keys.router)
 app.include_router(ingestion.router)
 app.include_router(observability.router)
+app.include_router(policies.router)
+
+from .routers import webhooks
+app.include_router(webhooks.router)
 
 
 @app.get("/stats", tags=["stats"])

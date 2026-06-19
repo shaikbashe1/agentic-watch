@@ -50,12 +50,16 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
         raise credentials_exception
     return user
 
-async def get_company_from_api_key(api_key: str = Depends(api_key_header), db: Session = Depends(get_db)):
+import hashlib
+
+async def get_workspace_from_api_key(api_key: str = Depends(api_key_header), db: Session = Depends(get_db)):
     if not api_key:
         raise HTTPException(status_code=401, detail="X-API-Key header missing")
     
-    # In production, you would hash the key and compare
-    key_record = db.query(tenant.APIKey).filter(tenant.APIKey.key_hash == api_key).first()
-    if not key_record or not key_record.is_active:
-        raise HTTPException(status_code=401, detail="Invalid API Key")
-    return key_record.company_id
+    # Hash the incoming key to compare with the database
+    key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+    key_record = db.query(tenant.APIKey).filter(tenant.APIKey.key_hash == key_hash).first()
+    
+    if not key_record or key_record.revoked:
+        raise HTTPException(status_code=401, detail="Invalid or Revoked API Key")
+    return key_record.workspace_id

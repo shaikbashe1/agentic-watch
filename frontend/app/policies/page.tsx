@@ -6,13 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useState } from "react";
-import { Policy, PolicyCreate } from "@/types";
+import { Textarea } from "@/components/ui/textarea";
 
-const EMPTY_FORM: PolicyCreate = { name: "", action_type: "", decision: "allow", is_active: true };
+const EMPTY_FORM = { name: "", description: "", action: "BLOCK", conditions: '{"field": "request.model", "operator": "==", "value": "gpt-4"}', is_active: true };
 
-function decisionVariant(d: string) {
-  if (d === "block") return "destructive" as const;
-  if (d === "warn") return "secondary" as const;
+function actionVariant(a: string) {
+  if (a === "BLOCK") return "destructive" as const;
+  if (a === "REDACT") return "secondary" as const;
   return "default" as const;
 }
 
@@ -23,49 +23,72 @@ export default function PoliciesPage() {
   const deletePolicy = useDeletePolicy();
 
   const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [form, setForm] = useState<PolicyCreate>(EMPTY_FORM);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState("");
 
   const resetForm = () => { setForm(EMPTY_FORM); setEditId(null); setFormError(""); setShowForm(false); };
 
   const handleSubmit = async () => {
-    if (!form.name.trim() || !form.action_type.trim()) {
-      setFormError("Name and Action Type are required.");
+    if (!form.name.trim()) {
+      setFormError("Name is required.");
       return;
     }
+    
+    let parsedConditions;
+    try {
+        parsedConditions = JSON.parse(form.conditions);
+    } catch (e) {
+        setFormError("Conditions must be valid JSON.");
+        return;
+    }
+    
     setFormError("");
+    const payload = {
+        name: form.name,
+        description: form.description,
+        action: form.action,
+        conditions: parsedConditions,
+        is_active: form.is_active
+    };
+
     if (editId !== null) {
-      await updatePolicy.mutateAsync({ id: editId, updates: form });
+      await updatePolicy.mutateAsync({ id: editId, updates: payload });
     } else {
-      await createPolicy.mutateAsync(form);
+      await createPolicy.mutateAsync(payload);
     }
     resetForm();
   };
 
-  const handleEdit = (p: Policy) => {
-    setForm({ name: p.name, description: p.description ?? "", action_type: p.action_type, decision: p.decision, is_active: p.is_active });
+  const handleEdit = (p: any) => {
+    setForm({ 
+        name: p.name, 
+        description: p.description ?? "", 
+        action: p.action, 
+        conditions: JSON.stringify(p.conditions, null, 2), 
+        is_active: p.is_active 
+    });
     setEditId(p.id);
     setShowForm(true);
   };
 
-  const handleToggle = (p: Policy) => {
+  const handleToggle = (p: any) => {
     updatePolicy.mutate({ id: p.id, updates: { is_active: !p.is_active } });
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = (id: string) => {
     if (confirm("Delete this policy?")) deletePolicy.mutate(id);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Policies</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Advanced Policies</h1>
         <Button onClick={() => { resetForm(); setShowForm(true); }}>Create Policy</Button>
       </div>
 
       {showForm && (
-        <div className="border rounded-lg p-6 bg-gray-50 space-y-4 max-w-xl">
+        <div className="border rounded-lg p-6 bg-card space-y-4 max-w-xl">
           <h2 className="font-semibold text-lg">{editId ? "Edit Policy" : "New Policy"}</h2>
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -73,28 +96,33 @@ export default function PoliciesPage() {
               <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Policy name" className="mt-1" />
             </div>
             <div>
-              <label className="text-sm font-medium">Action Type *</label>
-              <Input value={form.action_type} onChange={e => setForm(f => ({ ...f, action_type: e.target.value }))} placeholder="e.g. delete_database" className="mt-1" />
+              <label className="text-sm font-medium">Action *</label>
+              <select
+                value={form.action}
+                onChange={e => setForm(f => ({ ...f, action: e.target.value }))}
+                className="mt-1 w-full border rounded px-3 py-2 text-sm bg-background text-foreground"
+              >
+                <option value="BLOCK">BLOCK</option>
+                <option value="REDACT">REDACT</option>
+                <option value="ALERT">ALERT</option>
+              </select>
             </div>
           </div>
           <div>
             <label className="text-sm font-medium">Description</label>
-            <Input value={form.description ?? ""} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional" className="mt-1" />
+            <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional" className="mt-1" />
           </div>
           <div>
-            <label className="text-sm font-medium">Decision *</label>
-            <select
-              value={form.decision}
-              onChange={e => setForm(f => ({ ...f, decision: e.target.value as PolicyCreate["decision"] }))}
-              className="mt-1 w-full border rounded px-3 py-2 text-sm bg-white"
-            >
-              <option value="allow">Allow</option>
-              <option value="warn">Warn</option>
-              <option value="block">Block</option>
-            </select>
+            <label className="text-sm font-medium">Conditions (JSON AST)</label>
+            <Textarea 
+                value={form.conditions} 
+                onChange={e => setForm(f => ({ ...f, conditions: e.target.value }))} 
+                className="mt-1 font-mono text-xs" 
+                rows={5} 
+            />
           </div>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.is_active ?? true} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
+            <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
             Active
           </label>
           {formError && <p className="text-red-500 text-sm">{formError}</p>}
@@ -107,15 +135,13 @@ export default function PoliciesPage() {
         </div>
       )}
 
-      {error && <div className="text-red-500">Failed to load policies. Is the backend running?</div>}
-
-      <div className="border rounded-md bg-white">
+      <div className="border border-border rounded-md bg-card">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Policy Name</TableHead>
-              <TableHead>Action Type</TableHead>
-              <TableHead>Decision</TableHead>
+              <TableHead>Action</TableHead>
+              <TableHead>Conditions</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -124,14 +150,14 @@ export default function PoliciesPage() {
             {isLoading ? (
               <TableRow><TableCell colSpan={5} className="text-center py-4">Loading...</TableCell></TableRow>
             ) : policies.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-4 text-muted-foreground">No policies found. Create one above.</TableCell></TableRow>
-            ) : policies.map((policy: Policy) => (
+              <TableRow><TableCell colSpan={5} className="text-center py-4 text-muted-foreground">No policies found.</TableCell></TableRow>
+            ) : policies.map((policy: any) => (
               <TableRow key={policy.id}>
-                <TableCell className="font-medium">{policy.name}</TableCell>
-                <TableCell><code className="text-xs bg-gray-100 px-1 py-0.5 rounded">{policy.action_type}</code></TableCell>
+                <TableCell className="font-medium text-foreground">{policy.name}</TableCell>
                 <TableCell>
-                  <Badge variant={decisionVariant(policy.decision)}>{policy.decision.toUpperCase()}</Badge>
+                  <Badge variant={actionVariant(policy.action)}>{policy.action}</Badge>
                 </TableCell>
+                <TableCell><code className="text-xs bg-muted text-muted-foreground px-1 py-0.5 rounded truncate max-w-[200px] block">{JSON.stringify(policy.conditions)}</code></TableCell>
                 <TableCell>
                   <Badge variant={policy.is_active ? "default" : "outline"}>
                     {policy.is_active ? "Active" : "Disabled"}

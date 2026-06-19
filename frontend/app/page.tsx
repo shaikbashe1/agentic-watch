@@ -33,6 +33,9 @@ export default function Dashboard() {
   const { data: alerts = [] } = useAlerts(20);
   const { data: agentStats = [] } = useAgentStats();
 
+  // Store live events for the Live Stream component
+  const [liveEvents, setLiveEvents] = useState<any[]>([]);
+
   // Setup WebSocket for Real-Time Dashboard Updates
   useEffect(() => {
     const token = localStorage.getItem('agentwatch_token');
@@ -40,6 +43,14 @@ export default function Dashboard() {
         const ws = new WebSocket(`ws://localhost:8000/ws/dashboard?token=${token}`);
         ws.onmessage = (event) => {
             try {
+                const data = JSON.parse(event.data);
+                
+                // Add to live stream
+                setLiveEvents(prev => {
+                    const newEvents = [data, ...prev];
+                    return newEvents.slice(0, 50); // Keep last 50
+                });
+
                 // Instantly refresh TanStack queries on new events
                 queryClient.invalidateQueries({ queryKey: ["stats"] });
                 queryClient.invalidateQueries({ queryKey: ["activities"] });
@@ -74,6 +85,34 @@ export default function Dashboard() {
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold tracking-tight">Overview Dashboard</h1>
+
+      {/* Live Event Stream Panel */}
+      <Card className="border-primary/20 shadow-lg shadow-primary/5">
+        <CardHeader className="bg-muted/30 border-b border-border py-3">
+          <CardTitle className="text-sm font-medium flex items-center gap-2">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+            </span>
+            Live Event Stream
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="h-48 overflow-y-auto bg-card p-4 space-y-2 font-mono text-xs">
+            {liveEvents.length === 0 ? (
+                <div className="text-muted-foreground h-full flex items-center justify-center">Waiting for telemetry...</div>
+            ) : (
+                liveEvents.map((evt, idx) => (
+                    <div key={idx} className="flex gap-4 border-b border-border/50 pb-2">
+                        <span className="text-muted-foreground whitespace-nowrap">{new Date(evt.timestamp).toLocaleTimeString()}</span>
+                        <Badge variant="outline" className="text-[10px] uppercase">{evt.event_type}</Badge>
+                        <span className="text-foreground truncate">{JSON.stringify(evt.payload).substring(0, 100)}...</span>
+                    </div>
+                ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stat cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">

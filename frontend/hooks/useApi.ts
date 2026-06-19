@@ -113,3 +113,34 @@ export function useUpdateAlertStatus() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["alerts"] }),
   });
 }
+
+export function useWebhooks() {
+  return useQuery({
+    queryKey: ["webhooks"],
+    queryFn: async () => {
+      const { data } = await api.get<any[]>("/webhooks");
+      return data;
+    },
+  });
+}
+
+export function useCreateWebhook() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (webhook: { url: string; secret: string }) => {
+      const { data } = await api.post<any>("/webhooks", webhook);
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["webhooks"] }),
+  });
+}
+
+export function useDeleteWebhook() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/webhooks/${id}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["webhooks"] }),
+  });
+}
