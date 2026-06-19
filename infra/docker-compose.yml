@@ -21,6 +21,21 @@ services:
       - "6379:6379"
     restart: unless-stopped
 
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: agentwatch_api
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db/agentwatch
+      - REDIS_URL=redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    restart: unless-stopped
+
   celery_worker:
     build:
       context: ../backend
@@ -33,6 +48,19 @@ services:
     depends_on:
       - redis
       - db
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: agentwatch_web
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
     restart: unless-stopped
 
 volumes:
