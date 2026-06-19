@@ -10,9 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Plus, Trash2, Save } from "lucide-react"
 
 interface Condition {
-  field: str
-  operator: str
-  value: str
+  field: string
+  operator: string
+  value: string
 }
 
 export default function PolicyBuilder() {
