@@ -1,114 +1,117 @@
-"use client";
+"use client"
 
-import { useAlerts, useUpdateAlertStatus } from "@/hooks/useApi";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useState } from "react";
-import { Alert } from "@/types";
+import Link from "next/link"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Bell, AlertTriangle } from "lucide-react"
 
-function severityVariant(s: string) {
-  if (s === "critical") return "destructive" as const;
-  if (s === "high") return "destructive" as const;
-  return "secondary" as const;
-}
+const mockAlertRules = [
+  { id: "ar_1", name: "High Cost Spike", metric: "Cost / Hour", threshold: "> $50", channels: ["Slack", "Email"] },
+  { id: "ar_2", name: "Critical Policy Violation", metric: "Policy Actions", threshold: "BLOCK > 5/min", channels: ["PagerDuty"] },
+  { id: "ar_3", name: "Latency Degradation", metric: "P95 Latency", threshold: "> 5000ms", channels: ["Slack"] },
+]
 
-function severityBorderColor(s: string) {
-  if (s === "critical") return "border-l-red-600";
-  if (s === "high") return "border-l-orange-500";
-  if (s === "medium") return "border-l-yellow-500";
-  return "border-l-blue-400";
-}
+const mockFiredAlerts = [
+  { id: "al_1", rule: "High Cost Spike", triggeredAt: "2026-06-19 14:15:00", status: "FIRING", severity: "HIGH" },
+  { id: "al_2", rule: "Latency Degradation", triggeredAt: "2026-06-19 10:05:00", status: "RESOLVED", severity: "MEDIUM" },
+]
 
-export default function AlertsPage() {
-  const { data: alerts = [], isLoading, error } = useAlerts();
-  const updateStatus = useUpdateAlertStatus();
-  const [search, setSearch] = useState("");
-  const [filterSeverity, setFilterSeverity] = useState("all");
-
-  const filtered = alerts.filter((a: Alert) => {
-    const matchSearch =
-      a.title.toLowerCase().includes(search.toLowerCase()) ||
-      (a.description ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      a.source.toLowerCase().includes(search.toLowerCase());
-    const matchSeverity = filterSeverity === "all" || a.severity === filterSeverity;
-    return matchSearch && matchSeverity;
-  });
-
-  const handleAcknowledge = (id: number) => {
-    updateStatus.mutate({ id, status: "acknowledged" });
-  };
-
-  const handleResolve = (id: number) => {
-    updateStatus.mutate({ id, status: "resolved" });
-  };
-
+export default function AlertsDashboard() {
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Alerts</h1>
-        <Badge variant="outline">{filtered.length} alert{filtered.length !== 1 ? "s" : ""}</Badge>
+    <div className="p-8 max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Alerting & Notifications</h1>
+          <p className="text-muted-foreground">Manage your alert rules and view fired incidents.</p>
+        </div>
+        <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Bell className="h-4 w-4 mr-2" /> New Alert Rule
+        </Button>
       </div>
 
-      <div className="flex gap-3 flex-wrap">
-        <Input
-          placeholder="Search alerts..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-xs"
-        />
-        {["all", "critical", "high", "medium", "low"].map((sev) => (
-          <Button
-            key={sev}
-            variant={filterSeverity === sev ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilterSeverity(sev)}
-          >
-            {sev.charAt(0).toUpperCase() + sev.slice(1)}
-          </Button>
-        ))}
-      </div>
+      <Card className="border-neutral-800 bg-black/40 border-l-4 border-l-red-500">
+        <CardHeader>
+          <CardTitle className="text-red-400 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" /> Active Incidents
+          </CardTitle>
+          <CardDescription>Alerts that are currently firing.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader className="bg-neutral-900/50">
+              <TableRow className="border-neutral-800">
+                <TableHead>Incident ID</TableHead>
+                <TableHead>Rule Triggered</TableHead>
+                <TableHead>Severity</TableHead>
+                <TableHead>Triggered At</TableHead>
+                <TableHead>Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mockFiredAlerts.map((alert) => (
+                <TableRow key={alert.id} className="border-neutral-800">
+                  <TableCell>
+                    <Link href={`/alerts/${alert.id}`} className="text-blue-400 hover:underline">
+                      {alert.id}
+                    </Link>
+                  </TableCell>
+                  <TableCell className="font-semibold">{alert.rule}</TableCell>
+                  <TableCell>
+                    <Badge variant="destructive" className={alert.severity === "HIGH" ? "bg-red-500" : "bg-yellow-500"}>
+                      {alert.severity}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-mono text-sm">{alert.triggeredAt}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={alert.status === "FIRING" ? "text-red-400 border-red-500/50" : "text-green-400 border-green-500/50"}>
+                      {alert.status}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
-      {isLoading && <div className="text-muted-foreground">Loading...</div>}
-      {error && <div className="text-red-500">Failed to load alerts. Is the backend running?</div>}
-
-      {!isLoading && filtered.length === 0 && (
-        <div className="text-muted-foreground py-8 text-center">No alerts found.</div>
-      )}
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((alert: Alert) => (
-          <Card key={alert.id} className={`border-l-4 ${severityBorderColor(alert.severity)}`}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium truncate max-w-[70%]">{alert.title}</CardTitle>
-              <Badge variant={severityVariant(alert.severity)}>{alert.severity}</Badge>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {alert.description && (
-                <p className="text-sm text-muted-foreground">{alert.description}</p>
-              )}
-              <div className="flex justify-between items-center text-xs text-muted-foreground">
-                <span>Source: {alert.source}</span>
-                <Badge variant="outline" className="text-xs">{alert.status}</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {new Date(alert.created_at).toLocaleString()}
-              </p>
-              {alert.status === "open" && (
-                <div className="flex gap-2 pt-1">
-                  <Button size="sm" variant="outline" onClick={() => handleAcknowledge(alert.id)}>
-                    Acknowledge
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => handleResolve(alert.id)}>
-                    Resolve
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card className="border-neutral-800 bg-black/40 mt-8">
+        <CardHeader>
+          <CardTitle>Configured Alert Rules</CardTitle>
+          <CardDescription>Rules continuously monitored by the AgentWatch engine.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader className="bg-neutral-900/50">
+              <TableRow className="border-neutral-800">
+                <TableHead>Rule Name</TableHead>
+                <TableHead>Metric</TableHead>
+                <TableHead>Threshold</TableHead>
+                <TableHead>Notification Channels</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mockAlertRules.map((rule) => (
+                <TableRow key={rule.id} className="border-neutral-800">
+                  <TableCell className="font-semibold">{rule.name}</TableCell>
+                  <TableCell>{rule.metric}</TableCell>
+                  <TableCell className="font-mono text-xs">{rule.threshold}</TableCell>
+                  <TableCell>
+                    <div className="flex gap-2">
+                      {rule.channels.map(ch => (
+                        <Badge key={ch} variant="secondary" className="bg-neutral-800">
+                          {ch}
+                        </Badge>
+                      ))}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }

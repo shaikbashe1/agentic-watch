@@ -11,8 +11,7 @@ import {
   useEdgesState,
   addEdge,
   Node,
-  Edge,
-  BackgroundVariant
+  Edge
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { Card } from "@/components/ui/card"
@@ -92,7 +91,7 @@ export default function TraceDetail() {
         >
           <Controls />
           <MiniMap nodeStrokeWidth={3} />
-          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+          <Background variant="dots" gap={12} size={1} />
         </ReactFlow>
       </Card>
     </div>

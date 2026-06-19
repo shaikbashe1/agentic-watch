@@ -1,182 +1,80 @@
-"use client";
+"use client"
 
-import { usePolicies, useCreatePolicy, useUpdatePolicy, useDeletePolicy } from "@/hooks/useApi";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useState } from "react";
-import { Textarea } from "@/components/ui/textarea";
+import Link from "next/link"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Plus, Settings2 } from "lucide-react"
 
-const EMPTY_FORM = { name: "", description: "", action: "BLOCK", conditions: '{"field": "request.model", "operator": "==", "value": "gpt-4"}', is_active: true };
+const mockPolicies = [
+  { id: "pol_1", name: "Block destructive commands", action: "BLOCK", conditions: 1, active: true },
+  { id: "pol_2", name: "Warn on expensive models in dev", action: "WARN", conditions: 2, active: true },
+  { id: "pol_3", name: "Block high risk score", action: "BLOCK", conditions: 1, active: true },
+  { id: "pol_4", name: "Redact PII in user prompts", action: "REDACT", conditions: 1, active: false },
+]
 
-function actionVariant(a: string) {
-  if (a === "BLOCK") return "destructive" as const;
-  if (a === "REDACT") return "secondary" as const;
-  return "default" as const;
-}
-
-export default function PoliciesPage() {
-  const { data: policies = [], isLoading, error } = usePolicies();
-  const createPolicy = useCreatePolicy();
-  const updatePolicy = useUpdatePolicy();
-  const deletePolicy = useDeletePolicy();
-
-  const [showForm, setShowForm] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [formError, setFormError] = useState("");
-
-  const resetForm = () => { setForm(EMPTY_FORM); setEditId(null); setFormError(""); setShowForm(false); };
-
-  const handleSubmit = async () => {
-    if (!form.name.trim()) {
-      setFormError("Name is required.");
-      return;
-    }
-    
-    let parsedConditions;
-    try {
-        parsedConditions = JSON.parse(form.conditions);
-    } catch (e) {
-        setFormError("Conditions must be valid JSON.");
-        return;
-    }
-    
-    setFormError("");
-    const payload = {
-        name: form.name,
-        description: form.description,
-        action: form.action,
-        conditions: parsedConditions,
-        is_active: form.is_active
-    };
-
-    if (editId !== null) {
-      await updatePolicy.mutateAsync({ id: editId, updates: payload });
-    } else {
-      await createPolicy.mutateAsync(payload);
-    }
-    resetForm();
-  };
-
-  const handleEdit = (p: any) => {
-    setForm({ 
-        name: p.name, 
-        description: p.description ?? "", 
-        action: p.action, 
-        conditions: JSON.stringify(p.conditions, null, 2), 
-        is_active: p.is_active 
-    });
-    setEditId(p.id);
-    setShowForm(true);
-  };
-
-  const handleToggle = (p: any) => {
-    updatePolicy.mutate({ id: p.id, updates: { is_active: !p.is_active } });
-  };
-
-  const handleDelete = (id: string) => {
-    if (confirm("Delete this policy?")) deletePolicy.mutate(id);
-  };
-
+export default function PolicyManager() {
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold tracking-tight">Advanced Policies</h1>
-        <Button onClick={() => { resetForm(); setShowForm(true); }}>Create Policy</Button>
-      </div>
-
-      {showForm && (
-        <div className="border rounded-lg p-6 bg-card space-y-4 max-w-xl">
-          <h2 className="font-semibold text-lg">{editId ? "Edit Policy" : "New Policy"}</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-sm font-medium">Name *</label>
-              <Input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Policy name" className="mt-1" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Action *</label>
-              <select
-                value={form.action}
-                onChange={e => setForm(f => ({ ...f, action: e.target.value }))}
-                className="mt-1 w-full border rounded px-3 py-2 text-sm bg-background text-foreground"
-              >
-                <option value="BLOCK">BLOCK</option>
-                <option value="REDACT">REDACT</option>
-                <option value="ALERT">ALERT</option>
-              </select>
-            </div>
-          </div>
-          <div>
-            <label className="text-sm font-medium">Description</label>
-            <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Optional" className="mt-1" />
-          </div>
-          <div>
-            <label className="text-sm font-medium">Conditions (JSON AST)</label>
-            <Textarea 
-                value={form.conditions} 
-                onChange={e => setForm(f => ({ ...f, conditions: e.target.value }))} 
-                className="mt-1 font-mono text-xs" 
-                rows={5} 
-            />
-          </div>
-          <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={form.is_active} onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))} />
-            Active
-          </label>
-          {formError && <p className="text-red-500 text-sm">{formError}</p>}
-          <div className="flex gap-3">
-            <Button onClick={handleSubmit} disabled={createPolicy.isPending || updatePolicy.isPending}>
-              {editId ? "Update" : "Create"}
-            </Button>
-            <Button variant="outline" onClick={resetForm}>Cancel</Button>
-          </div>
+    <div className="p-8 max-w-6xl mx-auto space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Policy Manager</h1>
+          <p className="text-muted-foreground">Govern agent actions before they execute.</p>
         </div>
-      )}
-
-      <div className="border border-border rounded-md bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Policy Name</TableHead>
-              <TableHead>Action</TableHead>
-              <TableHead>Conditions</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-4">Loading...</TableCell></TableRow>
-            ) : policies.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-4 text-muted-foreground">No policies found.</TableCell></TableRow>
-            ) : policies.map((policy: any) => (
-              <TableRow key={policy.id}>
-                <TableCell className="font-medium text-foreground">{policy.name}</TableCell>
-                <TableCell>
-                  <Badge variant={actionVariant(policy.action)}>{policy.action}</Badge>
-                </TableCell>
-                <TableCell><code className="text-xs bg-muted text-muted-foreground px-1 py-0.5 rounded truncate max-w-[200px] block">{JSON.stringify(policy.conditions)}</code></TableCell>
-                <TableCell>
-                  <Badge variant={policy.is_active ? "default" : "outline"}>
-                    {policy.is_active ? "Active" : "Disabled"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(policy)}>Edit</Button>
-                    <Button variant="outline" size="sm" onClick={() => handleToggle(policy)}>
-                      {policy.is_active ? "Disable" : "Enable"}
-                    </Button>
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(policy.id)}>Delete</Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
+          <Link href="/policies/new">
+            <Plus className="h-4 w-4 mr-2" /> Create Policy
+          </Link>
+        </Button>
       </div>
+
+      <Card className="border-neutral-800 bg-black/40">
+        <CardHeader>
+          <CardTitle>Active Policies</CardTitle>
+          <CardDescription>Policies are evaluated in top-down priority order.</CardDescription>
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader className="bg-neutral-900/50">
+              <TableRow className="border-neutral-800">
+                <TableHead>Status</TableHead>
+                <TableHead>Policy Name</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Conditions</TableHead>
+                <TableHead className="text-right">Manage</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mockPolicies.map((pol) => (
+                <TableRow key={pol.id} className="border-neutral-800 group hover:bg-neutral-900/50 transition-colors">
+                  <TableCell>
+                    <Badge variant={pol.active ? "default" : "secondary"} className={pol.active ? "bg-green-500/20 text-green-400" : ""}>
+                      {pol.active ? "Enabled" : "Disabled"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-semibold">{pol.name}</TableCell>
+                  <TableCell>
+                    <span className={`font-mono text-xs px-2 py-1 rounded-md ${
+                      pol.action === "BLOCK" ? "bg-red-500/20 text-red-400" :
+                      pol.action === "WARN" ? "bg-yellow-500/20 text-yellow-400" :
+                      "bg-blue-500/20 text-blue-400"
+                    }`}>
+                      {pol.action}
+                    </span>
+                  </TableCell>
+                  <TableCell>{pol.conditions} rule(s)</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon">
+                      <Settings2 className="h-4 w-4 text-muted-foreground" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }
