@@ -40,11 +40,11 @@ export interface Alert {
 }
 
 export interface Policy {
-  id: number;
+  id: string;
   name: string;
   description?: string | null;
-  action_type: string;
-  decision: "allow" | "warn" | "block";
+  action: string;
+  conditions: any;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -53,8 +53,8 @@ export interface Policy {
 export interface PolicyCreate {
   name: string;
   description?: string;
-  action_type: string;
-  decision: "allow" | "warn" | "block";
+  action: string;
+  conditions: any;
   is_active?: boolean;
 }
 

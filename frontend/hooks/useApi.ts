@@ -70,7 +70,7 @@ export function useCreatePolicy() {
 export function useUpdatePolicy() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, updates }: { id: number; updates: Partial<Policy> }) => {
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<Policy> }) => {
       const { data } = await api.put<Policy>(`/policies/${id}`, updates);
       return data;
     },
@@ -81,7 +81,7 @@ export function useUpdatePolicy() {
 export function useDeletePolicy() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async (id: string) => {
       await api.delete(`/policies/${id}`);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["policies"] }),
