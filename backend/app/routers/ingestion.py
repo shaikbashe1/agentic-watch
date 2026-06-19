@@ -52,6 +52,9 @@ async def ingest_batch(
     
     # Trigger asynchronous risk evaluation for LLM calls
     for e_id in event_ids_for_risk:
-        evaluate_risk.delay(e_id)
+        try:
+            evaluate_risk.delay(e_id)
+        except Exception as e:
+            logger.warning(f"Celery failed, skipping async evaluation: {e}")
         
     return {"status": "accepted", "ingested": len(payload.events)}
