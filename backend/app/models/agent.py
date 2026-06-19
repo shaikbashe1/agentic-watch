@@ -6,7 +6,7 @@ class Agent(Base):
     __tablename__ = "agents"
 
     id = Column(String, primary_key=True, index=True)
-    company_id = Column(String, ForeignKey("companies.id"))
+    workspace_id = Column(String, ForeignKey("workspaces.id"))
     name = Column(String)
     framework = Column(String) # LangGraph, CrewAI, AutoGen, Custom
     description = Column(String, nullable=True)

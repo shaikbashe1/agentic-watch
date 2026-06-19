@@ -1,5 +1,6 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import JSON
 from sqlalchemy.ext.declarative import declarative_base
 from ..database import Base
 from datetime import datetime
@@ -33,4 +34,4 @@ class Event(Base):
     policy_decision = Column(String, nullable=True)
     error = Column(String, nullable=True)
     
-    payload = Column(JSONB, nullable=True)
+    payload = Column(JSON, nullable=True)

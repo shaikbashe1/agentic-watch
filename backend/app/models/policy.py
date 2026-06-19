@@ -1,5 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, DateTime
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, JSON
 from datetime import datetime
 import uuid
 from ..database import Base
@@ -18,7 +17,7 @@ class Policy(Base):
     
     # conditions will store the JSON AST rule for the policy
     # e.g. {"field": "model", "operator": "==", "value": "gpt-4"}
-    conditions = Column(JSONB, nullable=False)
+    conditions = Column(JSON, nullable=False)
     
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
