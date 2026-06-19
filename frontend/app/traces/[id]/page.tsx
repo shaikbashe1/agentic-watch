@@ -18,8 +18,8 @@ import { Card } from "@/components/ui/card"
 
 export default function TraceDetail() {
   const { id } = useParams()
-  const [nodes, setNodes, onNodesChange] = useNodesState([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState([])
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {

@@ -66,7 +66,7 @@ export default function PolicyBuilder() {
           </div>
           <div className="space-y-2">
             <Label>Action to Take</Label>
-            <Select value={action} onValueChange={setAction}>
+            <Select value={action} onValueChange={(val) => setAction(val || "BLOCK")}>
               <SelectTrigger className="w-full bg-black/50 border-neutral-800">
                 <SelectValue placeholder="Select action" />
               </SelectTrigger>
@@ -89,7 +89,7 @@ export default function PolicyBuilder() {
           {conditions.map((cond, idx) => (
             <div key={idx} className="flex items-center gap-4 p-4 rounded-md border border-neutral-800 bg-black/50">
               <div className="flex-1">
-                <Select value={cond.field} onValueChange={(val) => updateCondition(idx, "field", val)}>
+                <Select value={cond.field} onValueChange={(val) => updateCondition(idx, "field", val || "")}>
                   <SelectTrigger className="bg-black/50 border-neutral-800">
                     <SelectValue />
                   </SelectTrigger>
@@ -102,7 +102,7 @@ export default function PolicyBuilder() {
                 </Select>
               </div>
               <div className="flex-1">
-                <Select value={cond.operator} onValueChange={(val) => updateCondition(idx, "operator", val)}>
+                <Select value={cond.operator} onValueChange={(val) => updateCondition(idx, "operator", val || "")}>
                   <SelectTrigger className="bg-black/50 border-neutral-800">
                     <SelectValue />
                   </SelectTrigger>
