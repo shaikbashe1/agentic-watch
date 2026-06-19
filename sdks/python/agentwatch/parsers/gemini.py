@@ -11,8 +11,12 @@ class GeminiParser(BaseParser):
         input_tokens = 0
         output_tokens = 0
         
+        # Gemini format includes usageMetadata in response
+        if "usageMetadata" in res_body:
+            input_tokens = res_body["usageMetadata"].get("promptTokenCount", 0)
+            output_tokens = res_body["usageMetadata"].get("candidatesTokenCount", 0)
         # Approximate tokens if not provided by stream
-        if req_body.get("contents"):
+        elif req_body.get("contents"):
             # rough estimate
             input_tokens = len(json.dumps(req_body["contents"])) // 4
             

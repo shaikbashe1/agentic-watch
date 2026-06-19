@@ -8,6 +8,11 @@ class AnthropicParser(BaseParser):
         input_tokens = 0
         output_tokens = 0
         
+        # Anthropic standard API response has usage
+        if "usage" in res_body:
+            input_tokens = res_body["usage"].get("input_tokens", 0)
+            output_tokens = res_body["usage"].get("output_tokens", 0)
+        
         event = {
             "trace_id": trace_id,
             "span_id": span_id,
