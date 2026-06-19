@@ -11,9 +11,17 @@ from ..services.auth_service import get_workspace_from_api_key
 from ..models.events import Event
 from ..tasks.risk_scoring import evaluate_risk
 
+from ..core.risk_scorer import RiskScorer
+from ..core.cost_calculator import CostCalculator
+from ..core.alert_engine import AlertEngine
+from ..models.alert import AlertRule
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/ingest", tags=["ingestion"])
+
+risk_scorer = RiskScorer()
+alert_engine = AlertEngine()
 
 class BatchEventRequest(BaseModel):
     events: List[Dict[str, Any]]
@@ -24,12 +32,22 @@ async def ingest_batch(
     workspace_id: str = Depends(get_workspace_from_api_key), 
     db: Session = Depends(get_db)
 ):
-    event_ids_for_risk = []
+    alert_rules = db.query(AlertRule).filter(AlertRule.workspace_id == workspace_id).all()
     
     for event_data in payload.events:
         event_id = str(uuid.uuid4())
         
-        # Parse basic fields
+        # Risk Evaluation
+        risk_result = risk_scorer.score_event(event_data)
+        
+        # Cost Calculation
+        provider = event_data.get("llm_provider", event_data.get("provider"))
+        model = event_data.get("llm_model", event_data.get("model"))
+        input_tokens = event_data.get("input_tokens", 0) or 0
+        output_tokens = event_data.get("output_tokens", 0) or 0
+        
+        cost = CostCalculator.calculate_cost(model, input_tokens, output_tokens) if model else 0.0
+        
         db_event = Event(
             id=event_id,
             workspace_id=workspace_id,
@@ -39,22 +57,21 @@ async def ingest_batch(
             event_type=event_data.get("event_type", "unknown"),
             started_at=datetime.now(timezone.utc),
             latency_ms=event_data.get("latency_ms"),
-            llm_provider=event_data.get("provider"),
-            llm_model=event_data.get("model"),
-            input_tokens=event_data.get("input_tokens"),
-            output_tokens=event_data.get("output_tokens"),
+            llm_provider=provider,
+            llm_model=model,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            cost_usd=cost,
+            risk_score=risk_result.score,
             payload=event_data.get("payload", {})
         )
         db.add(db_event)
-        event_ids_for_risk.append(event_id)
         
+        # Alert Evaluation
+        alert_decisions = alert_engine.evaluate(alert_rules, {**event_data, "risk_score": risk_result.score, "cost": cost})
+        for decision in alert_decisions:
+            alert_engine.dispatch(decision)
+            
     db.commit()
     
-    # Trigger asynchronous risk evaluation for LLM calls
-    for e_id in event_ids_for_risk:
-        try:
-            evaluate_risk.delay(e_id)
-        except Exception as e:
-            logger.warning(f"Celery failed, skipping async evaluation: {e}")
-        
     return {"status": "accepted", "ingested": len(payload.events)}

@@ -4,14 +4,21 @@ import queue
 import threading
 import requests
 import logging
+import json
+import httpx
+from .policy import LocalPolicyEnforcer
+from .risk import LocalRiskScorer
 
 class AgentWatchClient:
     def __init__(self, api_key: str, api_url: str, session_id: str, environment: str, tags: dict):
         self.api_key = api_key
-        self.api_url = api_url
+        self.api_url = api_url.rstrip("/")
         self.session_id = session_id
         self.environment = environment
         self.tags = tags
+        
+        self.policy_enforcer = LocalPolicyEnforcer(self)
+        self.risk_scorer = LocalRiskScorer()
         
         self.headers = {
             "X-API-Key": self.api_key,
@@ -22,16 +29,21 @@ class AgentWatchClient:
         self.worker_thread = threading.Thread(target=self._worker, daemon=True)
         self.worker_thread.start()
 
+    def check_policy(self, event_data: dict) -> dict:
+        return self.policy_enforcer.evaluate(event_data)
+
     def send_event(self, event: dict):
-        """
-        Enqueues an event for asynchronous batch sending.
-        """
         event["session_id"] = self.session_id
         event["environment"] = self.environment
-        if "tags" not in event:
-            event["tags"] = self.tags
-            
-        self.queue.put(event)
+        event["tags"] = self.tags
+        
+        # Local heuristic risk scoring
+        event["risk_score"] = self.risk_scorer.score_event(event)
+        
+        try:
+            self.queue.put_nowait(event)
+        except queue.Full:
+            logging.warning("AgentWatch: Event queue full, dropping event.")
 
     def _worker(self):
         batch = []

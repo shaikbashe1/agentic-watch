@@ -2,6 +2,9 @@ import logging
 from .parsers.openai import OpenAIParser
 from .parsers.anthropic import AnthropicParser
 
+from .parsers.gemini import GeminiParser
+from .parsers.bedrock import BedrockParser
+
 def patch_all(client):
     try:
         import httpcore
@@ -16,6 +19,10 @@ def patch_all(client):
                 parser = OpenAIParser(client)
             elif "api.anthropic.com" in url:
                 parser = AnthropicParser(client)
+            elif "generativelanguage.googleapis.com" in url:
+                parser = GeminiParser(client)
+            elif "bedrock-runtime" in url:
+                parser = BedrockParser(client)
                 
             if not parser:
                 return _original_handle_request(self, request)
