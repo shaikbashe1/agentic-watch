@@ -3,65 +3,28 @@ version: '3.8'
 services:
   db:
     image: timescale/timescaledb:latest-pg15
-    container_name: agentwatch_db
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_USER: agentwatch
+      POSTGRES_PASSWORD: agentwatchpassword
       POSTGRES_DB: agentwatch
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U agentwatch"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
-    image: redis:alpine
-    container_name: agentwatch_redis
+    image: redis:7-alpine
     ports:
       - "6379:6379"
-    restart: unless-stopped
-
-  api:
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
-    container_name: agentwatch_api
-    environment:
-      - DATABASE_URL=postgresql://postgres:password@db/agentwatch
-      - REDIS_URL=redis://redis:6379/0
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-      - redis
-    restart: unless-stopped
-
-  celery_worker:
-    build:
-      context: ../backend
-      dockerfile: Dockerfile
-    container_name: agentwatch_celery
-    command: celery -A app.worker.celery_app worker --loglevel=info
-    environment:
-      - REDIS_URL=redis://redis:6379/0
-      - DATABASE_URL=postgresql://postgres:password@db/agentwatch
-    depends_on:
-      - redis
-      - db
-    restart: unless-stopped
-
-  web:
-    build:
-      context: ../frontend
-      dockerfile: Dockerfile
-    container_name: agentwatch_web
-    environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8000
-    ports:
-      - "3000:3000"
-    depends_on:
-      - api
-    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
 
 volumes:
   postgres_data:
+  redis_data:
