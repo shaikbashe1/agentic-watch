@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.110.0
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+      - "8888:8888" # Prometheus metrics
+    depends_on:
+      - clickhouse
+    networks:
+      - agentwatch-net
+
+  # ClickHouse for high-throughput trace storage
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3
+    ports:
+      - "8123:8123" # HTTP interface
+      - "9000:9000" # Native interface
+    environment:
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=
+      - CLICKHOUSE_DB=agentwatch
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    networks:
+      - agentwatch-net
+
+  # PostgreSQL for relational metadata (Users, Workspaces, RBAC)
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=agentwatch
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - agentwatch-net
+
+networks:
+  agentwatch-net:
+    driver: bridge
+
+volumes:
+  clickhouse_data:
+  postgres_data:

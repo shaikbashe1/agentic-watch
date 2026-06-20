@@ -1,0 +1,19 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: agentwatch-backend-scaler
+  namespace: agentwatch
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: agentwatch-backend
+  minReplicaCount: 3
+  maxReplicaCount: 100
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus.monitoring.svc.cluster.local:9090
+        metricName: http_requests_total
+        query: sum(rate(http_requests_total{app="agentwatch-backend"}[2m]))
+        threshold: '100'

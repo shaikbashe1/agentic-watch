@@ -1,90 +1,53 @@
+from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from pydantic import BaseModel
 import logging
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-from .database import engine, Base, get_db
-from .routers import activities, alignment, alerts, policies, observability, ingestion, auth, team, keys
-from .services import activity_service
-from .websockets import manager
-from jose import jwt, JWTError
-from .services.auth_service import SECRET_KEY, ALGORITHM
-from fastapi import WebSocket, WebSocketDisconnect
 
-logging.basicConfig(level=logging.INFO)
+app = FastAPI(title="AgentWatch API V2", version="2.0.0")
+security = HTTPBearer()
+logger = logging.getLogger(__name__)
 
-from sqlalchemy import text
+# Mock DB
+TENANTS = {
+    "tenant-1": {"id": "tenant-1", "name": "Acme Corp", "tier": "enterprise"},
+    "tenant-2": {"id": "tenant-2", "name": "Stark Industries", "tier": "pro"}
+}
 
-Base.metadata.create_all(bind=engine)
+USERS = {
+    "user-1": {"id": "user-1", "tenant_id": "tenant-1", "role": "admin"},
+    "user-2": {"id": "user-2", "tenant_id": "tenant-1", "role": "viewer"},
+}
 
-# Try to create hypertable for TimescaleDB if it's Postgres
-try:
-    with engine.connect() as conn:
-        conn.execute(text("SELECT create_hypertable('events', 'started_at', if_not_exists => TRUE);"))
-        conn.commit()
-except Exception as e:
-    logging.info(f"Could not create hypertable (normal if using SQLite or already created): {e}")
-app = FastAPI(
-    title="Agentic Watch B2B API",
-    description="Multi-tenant Agent Observability Platform",
-    version="3.0.0",
-    openapi_tags=[
-        {"name": "auth", "description": "Authentication and Account Creation"},
-        {"name": "team", "description": "Team & RBAC Management"},
-        {"name": "keys", "description": "API Keys and Agent Registration"},
-        {"name": "ingestion", "description": "Universal telemetry ingestion"},
-        {"name": "observability", "description": "Observability and Execution Timeline"},
-    ],
-)
+class User(BaseModel):
+    id: str
+    tenant_id: str
+    role: str
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)) -> User:
+    token = credentials.credentials
+    # Mock token validation
+    user_data = USERS.get(token)
+    if not user_data:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return User(**user_data)
 
-@app.websocket("/ws/dashboard")
-async def websocket_endpoint(websocket: WebSocket, token: str):
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        company_id = payload.get("company_id")
-        if not company_id:
-            await websocket.close(code=1008)
-            return
-            
-        await manager.connect(websocket, company_id)
-        try:
-            while True:
-                data = await websocket.receive_text()
-                # We don't really expect to receive data from dashboard, just push to it
-        except WebSocketDisconnect:
-            manager.disconnect(websocket, company_id)
-    except JWTError:
-        await websocket.close(code=1008)
+def require_role(required_role: str):
+    def role_checker(user: User = Depends(get_current_user)):
+        if required_role == "admin" and user.role != "admin":
+            raise HTTPException(status_code=403, detail="Not enough permissions")
+        return user
+    return role_checker
 
-app.include_router(auth.router)
-app.include_router(team.router)
-app.include_router(keys.router)
-app.include_router(ingestion.router)
-app.include_router(observability.router)
-app.include_router(policies.router)
+@app.get("/api/v1/workspaces")
+async def get_workspaces(user: User = Depends(require_role("viewer"))):
+    """Returns workspaces scoped to the user's tenant."""
+    return {"tenant": TENANTS[user.tenant_id], "status": "active"}
 
-from .routers import webhooks, analytics, sessions, alerts, agents, workspaces, otel
-app.include_router(webhooks.router)
-app.include_router(analytics.router)
-app.include_router(sessions.router)
-app.include_router(alerts.router)
-app.include_router(agents.router)
-app.include_router(workspaces.router)
-app.include_router(otel.router)
+@app.post("/api/v1/workspaces/settings")
+async def update_settings(user: User = Depends(require_role("admin"))):
+    """Only admins can update workspace settings."""
+    return {"message": "Settings updated successfully for tenant " + user.tenant_id}
 
-
-@app.get("/stats", tags=["stats"])
-def get_stats(db: Session = Depends(get_db)):
-    return activity_service.get_stats(db)
-
-
-@app.get("/health", tags=["stats"])
-def health():
+@app.get("/health")
+async def health():
     return {"status": "ok"}

@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentwatch"
+version = "2.0.0"
+description = "Enterprise OpenTelemetry SDK for AI Agents"
+authors = [
+    {name = "AgentWatch Team", email = "oss@agentwatch.ai"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "opentelemetry-api>=1.24.0",
+    "opentelemetry-sdk>=1.24.0",
+    "opentelemetry-exporter-otlp>=1.24.0",
+    "opentelemetry-instrumentation>=0.45b0",
+    "opentelemetry-semantic-conventions>=0.45b0",
+    "pydantic>=2.0.0",
+    "wrapt>=1.16.0"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0"
+]
+all = [
+    "opentelemetry-instrumentation-fastapi>=0.45b0",
+    "opentelemetry-instrumentation-requests>=0.45b0",
+    "opentelemetry-instrumentation-httpx>=0.45b0",
+    "alignx-telemetry>=0.1.0"
+]
+
+[tool.setuptools.packages.find]
+include = ["agentwatch*"]

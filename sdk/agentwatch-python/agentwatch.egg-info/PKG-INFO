@@ -1,0 +1,46 @@
+Metadata-Version: 2.4
+Name: agentwatch
+Version: 2.0.0
+Summary: Enterprise OpenTelemetry SDK for AI Agents
+Author-email: AgentWatch Team <oss@agentwatch.ai>
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: opentelemetry-api>=1.24.0
+Requires-Dist: opentelemetry-sdk>=1.24.0
+Requires-Dist: opentelemetry-exporter-otlp>=1.24.0
+Requires-Dist: opentelemetry-instrumentation>=0.45b0
+Requires-Dist: opentelemetry-semantic-conventions>=0.45b0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: wrapt>=1.16.0
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Provides-Extra: all
+Requires-Dist: opentelemetry-instrumentation-fastapi>=0.45b0; extra == "all"
+Requires-Dist: opentelemetry-instrumentation-requests>=0.45b0; extra == "all"
+Requires-Dist: opentelemetry-instrumentation-httpx>=0.45b0; extra == "all"
+Requires-Dist: alignx-telemetry>=0.1.0; extra == "all"
+
+# AgentWatch Python SDK (V2)
+
+Enterprise OpenTelemetry SDK for AI Agents.
+
+## Installation
+```bash
+pip install agentwatch
+```
+
+## Usage
+```python
+from agentwatch import init, trace_agent
+
+# Initialize telemetry
+telemetry = init({
+    "service_name": "my-agent-service",
+    "endpoint": "http://localhost:4317"
+})
+
+@trace_agent(name="ResearchAgent")
+def run_research(query: str):
+    pass
+```
