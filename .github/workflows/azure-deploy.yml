@@ -71,14 +71,7 @@ jobs:
         with:
           resourceGroupName: ${{ env.RESOURCE_GROUP }}
           template: ./infra/main.bicep
-          parameters: >
-            environmentName=${{ env.ENVIRONMENT_NAME }}
-            pgAdminPassword=${{ secrets.PG_ADMIN_PASSWORD }}
-            acrServer=ghcr.io
-            acrUsername=${{ github.actor }}
-            acrPassword=${{ secrets.GITHUB_TOKEN }}
-            frontendImage=${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
-            backendImage=${{ env.BACKEND_IMAGE }}:${{ github.sha }}
+          parameters: environmentName=${{ env.ENVIRONMENT_NAME }} pgAdminPassword="${{ secrets.PG_ADMIN_PASSWORD }}" acrServer=ghcr.io acrUsername="${{ github.actor }}" acrPassword="${{ secrets.GITHUB_TOKEN }}" frontendImage=${{ env.FRONTEND_IMAGE }}:${{ github.sha }} backendImage=${{ env.BACKEND_IMAGE }}:${{ github.sha }}
 
       - name: Apply Database Migrations
         run: |
