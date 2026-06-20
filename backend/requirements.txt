@@ -2,7 +2,6 @@ fastapi==0.109.2
 uvicorn==0.27.1
 sqlalchemy==2.0.25
 asyncpg==0.29.0
-timescaledb==0.0.1
 redis==5.0.1
 celery==5.3.6
 pydantic==2.6.1
