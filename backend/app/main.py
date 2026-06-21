@@ -24,11 +24,12 @@ class HealthCheck(BaseModel):
 async def health_check():
     return HealthCheck(status="healthy", version="1.0.0")
 
-from app.api.v1 import auth, ingest, governance
+from app.api.v1 import auth, ingest, governance, dashboard
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 app.include_router(ingest.router, prefix="/api/v1/ingest", tags=["Telemetry Ingestion"])
 app.include_router(governance.router, prefix="/api/v1/governance", tags=["Active Governance"])
+app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 
 @app.get("/")
 async def root():

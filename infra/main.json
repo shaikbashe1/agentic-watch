@@ -1,0 +1,475 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.44.1.10279",
+      "templateHash": "14661370160709324078"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]",
+      "metadata": {
+        "description": "Location for all resources."
+      }
+    },
+    "environmentName": {
+      "type": "string",
+      "defaultValue": "agenticwatch",
+      "metadata": {
+        "description": "Environment name to prefix resources."
+      }
+    },
+    "pgAdminLogin": {
+      "type": "string",
+      "defaultValue": "agentwatchadmin",
+      "metadata": {
+        "description": "PostgreSQL Administrator Login"
+      }
+    },
+    "pgAdminPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "PostgreSQL Administrator Password"
+      }
+    },
+    "acrServer": {
+      "type": "string",
+      "metadata": {
+        "description": "Container Registry Server"
+      }
+    },
+    "acrUsername": {
+      "type": "string",
+      "metadata": {
+        "description": "Container Registry Username"
+      }
+    },
+    "acrPassword": {
+      "type": "securestring",
+      "metadata": {
+        "description": "Container Registry Password"
+      }
+    },
+    "frontendImage": {
+      "type": "string",
+      "defaultValue": "ghcr.io/shaikbashe1/agentic-watch-frontend:latest",
+      "metadata": {
+        "description": "Frontend Image Tag"
+      }
+    },
+    "backendImage": {
+      "type": "string",
+      "defaultValue": "ghcr.io/shaikbashe1/agentic-watch-backend:latest",
+      "metadata": {
+        "description": "Backend Image Tag"
+      }
+    }
+  },
+  "variables": {
+    "logAnalyticsWorkspaceName": "[format('{0}-laws', parameters('environmentName'))]",
+    "appInsightsName": "[format('{0}-appins', parameters('environmentName'))]",
+    "containerAppEnvName": "[format('{0}-env', parameters('environmentName'))]",
+    "redisName": "[format('{0}-redis', parameters('environmentName'))]",
+    "postgresServerName": "[format('{0}-pg', parameters('environmentName'))]",
+    "postgresDatabaseName": "agentwatch"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.OperationalInsights/workspaces",
+      "apiVersion": "2022-10-01",
+      "name": "[variables('logAnalyticsWorkspaceName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "name": "PerGB2018"
+        },
+        "retentionInDays": 30
+      }
+    },
+    {
+      "type": "Microsoft.Insights/components",
+      "apiVersion": "2020-02-02",
+      "name": "[variables('appInsightsName')]",
+      "location": "[parameters('location')]",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web",
+        "WorkspaceResourceId": "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.Cache/redis",
+      "apiVersion": "2023-08-01",
+      "name": "[variables('redisName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "sku": {
+          "name": "Basic",
+          "family": "C",
+          "capacity": 0
+        }
+      }
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers",
+      "apiVersion": "2023-03-01-preview",
+      "name": "[variables('postgresServerName')]",
+      "location": "[parameters('location')]",
+      "sku": {
+        "name": "Standard_B1ms",
+        "tier": "Burstable"
+      },
+      "properties": {
+        "version": "15",
+        "administratorLogin": "[parameters('pgAdminLogin')]",
+        "administratorLoginPassword": "[parameters('pgAdminPassword')]",
+        "storage": {
+          "storageSizeGB": 32
+        },
+        "highAvailability": {
+          "mode": "Disabled"
+        }
+      }
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
+      "apiVersion": "2023-03-01-preview",
+      "name": "[format('{0}/{1}', variables('postgresServerName'), variables('postgresDatabaseName'))]",
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('postgresServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
+      "apiVersion": "2023-03-01-preview",
+      "name": "[format('{0}/{1}', variables('postgresServerName'), 'AllowAzureServices')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('postgresServerName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2023-05-01",
+      "name": "[variables('containerAppEnvName')]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "appLogsConfiguration": {
+          "destination": "log-analytics",
+          "logAnalyticsConfiguration": {
+            "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName')), '2022-10-01').customerId]",
+            "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName')), '2022-10-01').primarySharedKey]"
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.OperationalInsights/workspaces', variables('logAnalyticsWorkspaceName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}-clickhouse', parameters('environmentName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvName'))]",
+        "configuration": {
+          "ingress": {
+            "external": false,
+            "targetPort": 8123
+          }
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "clickhouse",
+              "image": "clickhouse/clickhouse-server:24.3",
+              "resources": {
+                "cpu": "[json('1.0')]",
+                "memory": "2.0Gi"
+              },
+              "env": [
+                {
+                  "name": "CLICKHOUSE_USER",
+                  "value": "default"
+                },
+                {
+                  "name": "CLICKHOUSE_PASSWORD",
+                  "value": ""
+                },
+                {
+                  "name": "CLICKHOUSE_DB",
+                  "value": "agentwatch"
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 1
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}-collector', parameters('environmentName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvName'))]",
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 4318
+          }
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "otel-collector",
+              "image": "otel/opentelemetry-collector-contrib:0.110.0",
+              "command": [
+                "--config=/etc/otel-collector-config.yaml"
+              ],
+              "resources": {
+                "cpu": "[json('0.5')]",
+                "memory": "1.0Gi"
+              }
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 5
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}-backend', parameters('environmentName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvName'))]",
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 8000
+          },
+          "registries": [
+            {
+              "server": "[parameters('acrServer')]",
+              "username": "[parameters('acrUsername')]",
+              "passwordSecretRef": "acr-password"
+            }
+          ],
+          "secrets": [
+            {
+              "name": "acr-password",
+              "value": "[parameters('acrPassword')]"
+            },
+            {
+              "name": "database-url",
+              "value": "[format('postgresql+asyncpg://{0}:{1}@{2}.postgres.database.azure.com:5432/{3}', parameters('pgAdminLogin'), parameters('pgAdminPassword'), variables('postgresServerName'), variables('postgresDatabaseName'))]"
+            },
+            {
+              "name": "redis-url",
+              "value": "[format('redis://:{0}@{1}:{2}/0', listKeys(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').hostName, reference(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').sslPort)]"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "backend",
+              "image": "[parameters('backendImage')]",
+              "resources": {
+                "cpu": "[json('1.0')]",
+                "memory": "2.0Gi"
+              },
+              "env": [
+                {
+                  "name": "DATABASE_URL",
+                  "secretRef": "database-url"
+                },
+                {
+                  "name": "REDIS_URL",
+                  "secretRef": "redis-url"
+                },
+                {
+                  "name": "CLICKHOUSE_URL",
+                  "value": "[format('http://{0}:8123', format('{0}-clickhouse', parameters('environmentName')))]"
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 5
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', format('{0}-clickhouse', parameters('environmentName')))]",
+        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvName'))]",
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('postgresServerName'))]",
+        "[resourceId('Microsoft.Cache/redis', variables('redisName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}-worker', parameters('environmentName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvName'))]",
+        "configuration": {
+          "registries": [
+            {
+              "server": "[parameters('acrServer')]",
+              "username": "[parameters('acrUsername')]",
+              "passwordSecretRef": "acr-password"
+            }
+          ],
+          "secrets": [
+            {
+              "name": "acr-password",
+              "value": "[parameters('acrPassword')]"
+            },
+            {
+              "name": "database-url",
+              "value": "[format('postgresql+asyncpg://{0}:{1}@{2}.postgres.database.azure.com:5432/{3}', parameters('pgAdminLogin'), parameters('pgAdminPassword'), variables('postgresServerName'), variables('postgresDatabaseName'))]"
+            },
+            {
+              "name": "redis-url",
+              "value": "[format('redis://:{0}@{1}:{2}/0', listKeys(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').primaryKey, reference(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').hostName, reference(resourceId('Microsoft.Cache/redis', variables('redisName')), '2023-08-01').sslPort)]"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "worker",
+              "image": "[parameters('backendImage')]",
+              "command": [
+                "celery",
+                "-A",
+                "app.core.celery_app",
+                "worker",
+                "--loglevel=info"
+              ],
+              "resources": {
+                "cpu": "[json('1.0')]",
+                "memory": "2.0Gi"
+              },
+              "env": [
+                {
+                  "name": "DATABASE_URL",
+                  "secretRef": "database-url"
+                },
+                {
+                  "name": "REDIS_URL",
+                  "secretRef": "redis-url"
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 5
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvName'))]",
+        "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', variables('postgresServerName'))]",
+        "[resourceId('Microsoft.Cache/redis', variables('redisName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2023-05-01",
+      "name": "[format('{0}-frontend', parameters('environmentName'))]",
+      "location": "[parameters('location')]",
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvName'))]",
+        "configuration": {
+          "ingress": {
+            "external": true,
+            "targetPort": 3000
+          },
+          "registries": [
+            {
+              "server": "[parameters('acrServer')]",
+              "username": "[parameters('acrUsername')]",
+              "passwordSecretRef": "acr-password"
+            }
+          ],
+          "secrets": [
+            {
+              "name": "acr-password",
+              "value": "[parameters('acrPassword')]"
+            }
+          ]
+        },
+        "template": {
+          "containers": [
+            {
+              "name": "frontend",
+              "image": "[parameters('frontendImage')]",
+              "resources": {
+                "cpu": "[json('0.5')]",
+                "memory": "1.0Gi"
+              },
+              "env": [
+                {
+                  "name": "NEXT_PUBLIC_API_URL",
+                  "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('{0}-backend', parameters('environmentName'))), '2023-05-01').configuration.ingress.fqdn)]"
+                }
+              ]
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 5
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', format('{0}-backend', parameters('environmentName')))]",
+        "[resourceId('Microsoft.App/managedEnvironments', variables('containerAppEnvName'))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "frontendUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.App/containerApps', format('{0}-frontend', parameters('environmentName'))), '2023-05-01').configuration.ingress.fqdn]"
+    },
+    "backendUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.App/containerApps', format('{0}-backend', parameters('environmentName'))), '2023-05-01').configuration.ingress.fqdn]"
+    },
+    "collectorUrl": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.App/containerApps', format('{0}-collector', parameters('environmentName'))), '2023-05-01').configuration.ingress.fqdn]"
+    }
+  }
+}

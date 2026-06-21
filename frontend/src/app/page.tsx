@@ -1,6 +1,61 @@
-import React from 'react';
+"use client";
+
+import React, { useEffect, useState } from 'react';
+
+interface Metric {
+  label: string;
+  value: string;
+  change: string;
+  trend: string;
+}
+
+interface Agent {
+  name: string;
+  role: string;
+  status: string;
+  tokens: string;
+}
+
+interface LogEntry {
+  timestamp: string;
+  agent: string;
+  message: string;
+  color: string;
+}
 
 export default function Home() {
+  const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+        
+        const [metricsRes, agentsRes, logsRes] = await Promise.all([
+          fetch(`${baseUrl}/api/v1/dashboard/metrics`),
+          fetch(`${baseUrl}/api/v1/dashboard/agents`),
+          fetch(`${baseUrl}/api/v1/dashboard/logs`)
+        ]);
+
+        if (metricsRes.ok) setMetrics(await metricsRes.json());
+        if (agentsRes.ok) setAgents(await agentsRes.json());
+        if (logsRes.ok) setLogs(await logsRes.json());
+        
+        setIsConnected(true);
+      } catch (error) {
+        console.error("Failed to fetch dashboard data:", error);
+        setIsConnected(false);
+      }
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 2000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-purple-500/30">
       {/* Background gradients */}
@@ -21,23 +76,19 @@ export default function Home() {
             <h1 className="text-2xl font-bold tracking-tight">Agentic<span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">Watch</span></h1>
           </div>
           <div className="flex items-center gap-4">
-            <span className="flex items-center gap-2 text-sm text-zinc-400 bg-white/5 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md">
+            <span className={`flex items-center gap-2 text-sm ${isConnected ? 'text-zinc-400' : 'text-red-400'} bg-white/5 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md`}>
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                <span className={`${isConnected ? 'animate-ping bg-green-400' : 'bg-red-400'} absolute inline-flex h-full w-full rounded-full opacity-75`}></span>
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></span>
               </span>
-              System Online
+              {isConnected ? 'System Online' : 'API Offline'}
             </span>
           </div>
         </header>
 
         {/* Metrics Bar */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          {[
-            { label: 'Active Agents', value: '12', change: '+2', trend: 'up' },
-            { label: 'Tasks Processed (24h)', value: '8,439', change: '+14%', trend: 'up' },
-            { label: 'System Error Rate', value: '0.04%', change: '-0.01%', trend: 'down' },
-          ].map((metric, i) => (
+          {metrics.map((metric, i) => (
             <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-6 backdrop-blur-md hover:bg-white/10 transition-colors duration-300">
               <p className="text-zinc-400 text-sm font-medium mb-2">{metric.label}</p>
               <div className="flex items-end gap-3">
@@ -48,6 +99,11 @@ export default function Home() {
               </div>
             </div>
           ))}
+          {metrics.length === 0 && (
+            <div className="col-span-3 text-center py-6 text-zinc-500 border border-white/10 rounded-2xl">
+              Connecting to Telemetry Stream...
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -60,12 +116,7 @@ export default function Home() {
               Active Autonomous Agents
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {[
-                { name: 'Research-Alpha', role: 'Deep Web Researcher', status: 'Processing', tokens: '45.2k' },
-                { name: 'Coder-Bot-X', role: 'Frontend Developer', status: 'Idle', tokens: '12.8k' },
-                { name: 'Data-Analyzer-01', role: 'Data Scientist', status: 'Processing', tokens: '89.1k' },
-                { name: 'QA-Tester-Prime', role: 'Quality Assurance', status: 'Offline', tokens: '0' },
-              ].map((agent, i) => (
+              {agents.map((agent, i) => (
                 <div key={i} className="group bg-gradient-to-b from-white/5 to-transparent border border-white/10 rounded-2xl p-5 hover:border-purple-500/30 transition-all duration-300">
                   <div className="flex justify-between items-start mb-4">
                     <div>
@@ -102,15 +153,12 @@ export default function Home() {
             <div className="bg-black/50 border border-white/10 rounded-2xl p-4 font-mono text-xs text-zinc-400 h-[340px] overflow-hidden relative">
               <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-black/80 to-transparent z-10" />
               <div className="absolute bottom-0 left-0 w-full h-8 bg-gradient-to-t from-black/80 to-transparent z-10" />
-              <div className="space-y-3 animate-pulse">
-                <p><span className="text-blue-400">[17:04:12]</span> [Research-Alpha] Executed Google Search API: "Next.js performance patterns"</p>
-                <p><span className="text-blue-400">[17:04:15]</span> [Research-Alpha] Parsed 4,200 tokens from top 3 results.</p>
-                <p><span className="text-purple-400">[17:04:18]</span> [Coder-Bot-X] Invoked via IPC from Research-Alpha.</p>
-                <p><span className="text-purple-400">[17:04:22]</span> [Coder-Bot-X] Editing frontend/src/app/page.tsx...</p>
-                <p><span className="text-green-400">[17:04:25]</span> [System] File saved successfully. HMR triggered.</p>
-                <p><span className="text-blue-400">[17:04:28]</span> [Research-Alpha] Idling...</p>
-                <p><span className="text-yellow-400">[17:04:30]</span> [Data-Analyzer-01] Warning: High memory usage in Pandas frame.</p>
-                <p><span className="text-blue-400">[17:04:31]</span> [Data-Analyzer-01] Garbage collection forced. Mem: 4.2GB -{'>'} 1.1GB.</p>
+              <div className="space-y-3">
+                {logs.map((log, i) => (
+                  <p key={i}>
+                    <span className={`text-${log.color}`}>[{log.timestamp}]</span> [{log.agent}] {log.message}
+                  </p>
+                ))}
               </div>
             </div>
           </div>
